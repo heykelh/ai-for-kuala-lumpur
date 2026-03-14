@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import AICopilotPanel from "@/components/ai-copilot-panel";
 
 const KLLiveMap = dynamic(() => import("@/components/kl-live-map"), {
   ssr: false,
@@ -27,77 +28,20 @@ type LiveApiResponse = {
 
 const API_BASE_URL = "http://localhost:8000";
 
-const mainBars = [72, 56, 68, 49, 65, 73, 45, 61, 58, 79, 86, 74];
-const miniTrafficBars = [35, 62, 48, 41, 75, 91, 67, 44];
-const miniHumidityBars = [50, 54, 40, 66, 82, 72, 52, 60];
-const miniWeatherBars = [74, 61, 45, 38, 50, 59, 42, 68];
-
-function getTrafficFeedback(value?: number) {
-  if (value === undefined) return { text: "Waiting for live traffic feed.", tone: "feedback-medium" };
-  if (value >= 80) return { text: "🚨 Heavy congestion detected. Road pressure is high.", tone: "feedback-bad" };
-  if (value >= 60) return { text: "⚠️ Traffic is elevated but still manageable.", tone: "feedback-medium" };
-  return { text: "✅ Traffic is fluid across the monitored zone.", tone: "feedback-good" };
-}
-
-function getAirFeedback(value?: number) {
-  if (value === undefined) return { text: "Waiting for live air quality feed.", tone: "feedback-medium" };
-  if (value >= 101) return { text: "😷 Air quality is unhealthy. Outdoor exposure should be limited.", tone: "feedback-bad" };
-  if (value >= 51) return { text: "🌤️ Air quality is moderate. Acceptable with some caution.", tone: "feedback-medium" };
-  return { text: "🌿 Air quality is good and stable.", tone: "feedback-good" };
-}
-
-function getTempFeedback(value?: number) {
-  if (value === undefined) return { text: "Waiting for temperature data.", tone: "feedback-medium" };
-  if (value >= 33) return { text: "🔥 Heat is intense. Expect higher urban stress.", tone: "feedback-bad" };
-  if (value >= 29) return { text: "☀️ Warm city conditions, typical for Kuala Lumpur.", tone: "feedback-medium" };
-  return { text: "🌤️ Temperature is comfortable for city operations.", tone: "feedback-good" };
-}
-
-function getHumidityFeedback(value?: number) {
-  if (value === undefined) return { text: "Waiting for humidity data.", tone: "feedback-medium" };
-  if (value >= 85) return { text: "💧 Humidity is very high. Air will feel heavy.", tone: "feedback-bad" };
-  if (value >= 70) return { text: "🌫️ Humidity is noticeable but within expected range.", tone: "feedback-medium" };
-  return { text: "🍃 Humidity is relatively comfortable.", tone: "feedback-good" };
-}
-
-function getTransitFeedback(value?: number) {
-  if (value === undefined) return { text: "Waiting for transit delay feed.", tone: "feedback-medium" };
-  if (value >= 10) return { text: "🚦 Transit delays are significant right now.", tone: "feedback-bad" };
-  if (value >= 5) return { text: "🚌 Minor disruptions are visible in the network.", tone: "feedback-medium" };
-  return { text: "✅ Transit flow is healthy and responsive.", tone: "feedback-good" };
-}
-
 function MetricCard({
-  icon,
   title,
   value,
   helper,
-  feedback,
-  feedbackTone,
-  glow = "metric-glow-cyan",
 }: {
-  icon: string;
   title: string;
   value: string;
   helper: string;
-  feedback: string;
-  feedbackTone: string;
-  glow?: string;
 }) {
   return (
-    <div className={`glass-card ${glow} rounded-[28px] p-5`}>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm text-slate-400">{title}</p>
-          <p className="kpi-value mt-3 text-3xl font-bold text-white">{value}</p>
-        </div>
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-2xl">
-          {icon}
-        </div>
-      </div>
-
+    <div className="glass-card rounded-[28px] p-5">
+      <p className="text-sm text-slate-400">{title}</p>
+      <p className="mt-3 text-3xl font-bold text-white">{value}</p>
       <p className="mt-2 text-sm text-slate-400">{helper}</p>
-      <p className={`mt-3 text-sm leading-6 ${feedbackTone}`}>{feedback}</p>
     </div>
   );
 }
@@ -112,16 +56,12 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="glass-card soft-glow rounded-[30px] p-6">
-      <div className="mb-5 flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-cyan-300/90">
-            {subtitle}
-          </p>
-          <h2 className="heading-font mt-2 text-xl font-semibold text-white">
-            {title}
-          </h2>
-        </div>
+    <section className="glass-card rounded-[30px] p-6">
+      <div className="mb-5">
+        <p className="text-xs uppercase tracking-[0.2em] text-cyan-300">
+          {subtitle}
+        </p>
+        <h2 className="mt-2 text-xl font-semibold text-white">{title}</h2>
       </div>
       {children}
     </section>
@@ -138,18 +78,14 @@ export default function LiveDashboardPage() {
 
     async function loadInitialData() {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/live`, {
+        const res = await fetch(`${API_BASE_URL}/api/live`, {
           cache: "no-store",
         });
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch initial live data.");
-        }
-
-        const json: LiveApiResponse = await response.json();
+        const json: LiveApiResponse = await res.json();
         setData(json);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
+      } catch {
+        setError("Unable to fetch initial live data.");
       }
     }
 
@@ -158,21 +94,15 @@ export default function LiveDashboardPage() {
 
       eventSource.onopen = () => {
         setConnected(true);
-        setError(null);
       };
 
       eventSource.onerror = () => {
         setConnected(false);
-        setError("Live stream disconnected.");
       };
 
       eventSource.onmessage = (event) => {
-        try {
-          const parsed: LiveApiResponse = JSON.parse(event.data);
-          setData(parsed);
-        } catch {
-          setError("Failed to parse live stream payload.");
-        }
+        const parsed: LiveApiResponse = JSON.parse(event.data);
+        setData(parsed);
       };
     }
 
@@ -191,371 +121,200 @@ export default function LiveDashboardPage() {
     return new Date(snapshot.timestamp).toLocaleString();
   }, [snapshot?.timestamp]);
 
-  const trafficFeedback = getTrafficFeedback(snapshot?.traffic_index);
-  const airFeedback = getAirFeedback(snapshot?.aqi);
-  const tempFeedback = getTempFeedback(snapshot?.temperature_c);
-  const humidityFeedback = getHumidityFeedback(snapshot?.humidity_pct);
-  const transitFeedback = getTransitFeedback(snapshot?.transit_delay_min);
-    const mapPoints = [
+  const mapPoints = [
     {
       name: "KLCC",
       lat: 3.1579,
       lng: 101.7116,
-      trafficIndex: snapshot?.district === "KLCC" ? snapshot.traffic_index : 82,
-      aqi: snapshot?.district === "KLCC" ? snapshot.aqi : 58,
-      temperature: snapshot?.district === "KLCC" ? snapshot.temperature_c : 31,
-      humidity: snapshot?.district === "KLCC" ? snapshot.humidity_pct : 78,
+      trafficIndex: snapshot?.traffic_index ?? 80,
+      aqi: snapshot?.aqi ?? 55,
+      temperature: snapshot?.temperature_c ?? 31,
+      humidity: snapshot?.humidity_pct ?? 76,
     },
     {
       name: "Bukit Bintang",
       lat: 3.1467,
       lng: 101.7133,
-      trafficIndex: snapshot?.district === "Bukit Bintang" ? snapshot.traffic_index : 76,
-      aqi: snapshot?.district === "Bukit Bintang" ? snapshot.aqi : 64,
-      temperature: snapshot?.district === "Bukit Bintang" ? snapshot.temperature_c : 32,
-      humidity: snapshot?.district === "Bukit Bintang" ? snapshot.humidity_pct : 80,
+      trafficIndex: 75,
+      aqi: 62,
+      temperature: 32,
+      humidity: 78,
     },
     {
       name: "Bangsar",
       lat: 3.1292,
       lng: 101.6788,
-      trafficIndex: snapshot?.district === "Bangsar" ? snapshot.traffic_index : 61,
-      aqi: snapshot?.district === "Bangsar" ? snapshot.aqi : 49,
-      temperature: snapshot?.district === "Bangsar" ? snapshot.temperature_c : 30,
-      humidity: snapshot?.district === "Bangsar" ? snapshot.humidity_pct : 74,
+      trafficIndex: 63,
+      aqi: 48,
+      temperature: 30,
+      humidity: 74,
     },
     {
       name: "Mont Kiara",
       lat: 3.1698,
       lng: 101.6527,
-      trafficIndex: snapshot?.district === "Mont Kiara" ? snapshot.traffic_index : 57,
-      aqi: snapshot?.district === "Mont Kiara" ? snapshot.aqi : 46,
-      temperature: snapshot?.district === "Mont Kiara" ? snapshot.temperature_c : 29,
-      humidity: snapshot?.district === "Mont Kiara" ? snapshot.humidity_pct : 72,
+      trafficIndex: 57,
+      aqi: 45,
+      temperature: 29,
+      humidity: 72,
     },
     {
       name: "Petaling Jaya",
       lat: 3.1073,
       lng: 101.6067,
-      trafficIndex: snapshot?.district === "Petaling Jaya" ? snapshot.traffic_index : 69,
-      aqi: snapshot?.district === "Petaling Jaya" ? snapshot.aqi : 54,
-      temperature: snapshot?.district === "Petaling Jaya" ? snapshot.temperature_c : 30,
-      humidity: snapshot?.district === "Petaling Jaya" ? snapshot.humidity_pct : 76,
+      trafficIndex: 69,
+      aqi: 54,
+      temperature: 30,
+      humidity: 76,
     },
   ];
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6">
-      <section className="glass-card soft-glow rounded-[34px] p-6 sm:p-8">
-        <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-3xl">
-            <p className="text-xs uppercase tracking-[0.26em] text-cyan-300/90">
+      <section className="glass-card rounded-[34px] p-8">
+        <div className="flex flex-col gap-5 lg:flex-row lg:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.26em] text-cyan-300">
               Live command center
             </p>
-            <h1 className="heading-font mt-3 text-3xl font-bold tracking-tight text-white sm:text-5xl">
-              Kuala Lumpur Real-Time Operations
+            <h1 className="mt-3 text-4xl font-bold text-white">
+              Kuala Lumpur Operations
             </h1>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300">
-              A cleaner and more urban visual style for monitoring city traffic,
-              temperature, humidity, transit conditions, and environmental
-              signals in one place.
+            <p className="mt-3 max-w-2xl text-slate-300">
+              Real-time monitoring of traffic, environment and transport
+              conditions across Kuala Lumpur districts.
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="pill rounded-3xl px-5 py-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                Stream status
+          <div className="flex gap-4">
+            <div className="pill rounded-2xl px-4 py-3">
+              <p className="text-xs text-slate-400">Stream</p>
+              <p className="font-medium text-white">
+                {connected ? "Connected" : "Offline"}
               </p>
-              <div className="mt-2 flex items-center gap-2 text-white">
-                <span
-                  className={`status-dot ${
-                    connected ? "status-online" : "status-offline"
-                  }`}
-                />
-                <span className="font-medium">
-                  {connected ? "Connected" : "Offline"}
-                </span>
-              </div>
             </div>
 
-            <div className="pill rounded-3xl px-5 py-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                Last update
-              </p>
-              <p className="mt-2 text-sm font-medium text-white">{updatedAt}</p>
+            <div className="pill rounded-2xl px-4 py-3">
+              <p className="text-xs text-slate-400">Last update</p>
+              <p className="font-medium text-white">{updatedAt}</p>
             </div>
           </div>
-        </div>
-
-        <div className="mb-6 h-[2px] w-full rounded-full gradient-line" />
-
-        <div className="chart-bars">
-          {mainBars.map((height, index) => (
-            <div
-              key={`${height}-${index}`}
-              className="chart-bar"
-              style={{ height: `${height}%` }}
-            />
-          ))}
-        </div>
-
-        <div className="mt-4 grid grid-cols-6 gap-2 text-center text-[11px] uppercase tracking-[0.18em] text-slate-500 sm:grid-cols-12">
-          {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map(
-            (month) => (
-              <span key={month}>{month}</span>
-            )
-          )}
         </div>
       </section>
 
-      {error && (
-        <div className="rounded-[28px] border border-red-500/25 bg-red-500/10 px-5 py-4 text-sm text-red-200">
-          {error}
-        </div>
-      )}
-
       <section className="grid gap-5 xl:grid-cols-4">
         <MetricCard
-          icon="🚗"
-          title="Traffic Index"
-          value={snapshot?.traffic_index?.toString() ?? "--"}
-          helper={snapshot?.congestion_level ?? "No live label"}
-          feedback={trafficFeedback.text}
-          feedbackTone={trafficFeedback.tone}
-          glow="metric-glow-cyan"
+          title="District"
+          value={snapshot?.district ?? "--"}
+          helper="Current monitoring zone"
         />
 
         <MetricCard
-          icon="🌿"
-          title="Air Quality Index"
-          value={snapshot?.aqi?.toString() ?? "--"}
-          helper={snapshot?.air_quality_status ?? "No AQ label"}
-          feedback={airFeedback.text}
-          feedbackTone={airFeedback.tone}
-          glow="metric-glow-teal"
-        />
-
-        <MetricCard
-          icon="🌡️"
-          title="Temperature"
+          title="Traffic"
           value={
-            snapshot?.temperature_c !== undefined
-              ? `${snapshot.temperature_c}°C`
+            snapshot?.traffic_index
+              ? `${snapshot.traffic_index} 🚗`
               : "--"
           }
-          helper="Current urban temperature"
-          feedback={tempFeedback.text}
-          feedbackTone={tempFeedback.tone}
-          glow="metric-glow-amber"
+          helper={snapshot?.congestion_level ?? ""}
         />
 
         <MetricCard
-          icon="💧"
-          title="Humidity"
+          title="Air Quality"
+          value={snapshot?.aqi ? `${snapshot.aqi} 🌿` : "--"}
+          helper={snapshot?.air_quality_status ?? ""}
+        />
+
+        <MetricCard
+          title="Transit Delay"
           value={
-            snapshot?.humidity_pct !== undefined
-              ? `${snapshot.humidity_pct}%`
+            snapshot?.transit_delay_min
+              ? `${snapshot.transit_delay_min} min 🚇`
               : "--"
           }
-          helper="Atmospheric moisture"
-          feedback={humidityFeedback.text}
-          feedbackTone={humidityFeedback.tone}
-          glow="metric-glow-teal"
+          helper="Average network delay"
         />
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.7fr_1fr]">
         <SectionCard
-          title="City live overview"
-          subtitle="District / transit / weather"
+          title="City environment"
+          subtitle="Weather signals"
         >
-          <div className="grid gap-5 md:grid-cols-3">
-            <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-slate-400">🏙️ Current district</p>
-                <span className="text-xl">📍</span>
-              </div>
-              <p className="heading-font mt-3 text-3xl font-bold text-white">
-                {snapshot?.district ?? "--"}
-              </p>
-              <p className="mt-3 text-sm leading-6 text-slate-300">
-                Live operational focus zone currently monitored by the platform.
-              </p>
-              <div className="mini-bars mt-5">
-                {miniTrafficBars.map((value, index) => (
-                  <div
-                    key={index}
-                    className="mini-bar-cyan"
-                    style={{ height: `${value}%` }}
-                  />
-                ))}
-              </div>
-            </div>
+          <div className="grid gap-5 md:grid-cols-2">
+            <MetricCard
+              title="Temperature"
+              value={
+                snapshot?.temperature_c
+                  ? `${snapshot.temperature_c}°C 🌡️`
+                  : "--"
+              }
+              helper="Urban temperature"
+            />
 
-            <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-slate-400">🚌 Transit delay</p>
-                <span className="text-xl">🚦</span>
-              </div>
-              <p className="heading-font mt-3 text-3xl font-bold text-white">
-                {snapshot?.transit_delay_min !== undefined
-                  ? `${snapshot.transit_delay_min} min`
-                  : "--"}
-              </p>
-              <p className={`mt-3 text-sm leading-6 ${transitFeedback.tone}`}>
-                {transitFeedback.text}
-              </p>
-              <div className="mini-bars mt-5">
-                {miniHumidityBars.map((value, index) => (
-                  <div
-                    key={index}
-                    className="mini-bar-amber"
-                    style={{ height: `${value}%` }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-slate-400">☁️ Pipeline mode</p>
-                <span className="text-xl">📡</span>
-              </div>
-              <p className="heading-font mt-3 text-3xl font-bold text-white">
-                {data?.mode ?? "--"}
-              </p>
-              <p className="mt-3 text-sm leading-6 text-slate-300">
-                Mock live streaming mode active and ready for real source
-                ingestion.
-              </p>
-              <div className="mini-bars mt-5">
-                {miniWeatherBars.map((value, index) => (
-                  <div
-                    key={index}
-                    className="mini-bar-teal"
-                    style={{ height: `${value}%` }}
-                  />
-                ))}
-              </div>
-            </div>
+            <MetricCard
+              title="Humidity"
+              value={
+                snapshot?.humidity_pct
+                  ? `${snapshot.humidity_pct}% 💧`
+                  : "--"
+              }
+              helper="Atmospheric humidity"
+            />
           </div>
         </SectionCard>
 
-        <SectionCard title="Quick situation summary" subtitle="AI-style feedback">
-          <div className="space-y-4">
-            <div className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-slate-300">
-              🚗 <span className={trafficFeedback.tone}>{trafficFeedback.text}</span>
-            </div>
-            <div className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-slate-300">
-              🌿 <span className={airFeedback.tone}>{airFeedback.text}</span>
-            </div>
-            <div className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-slate-300">
-              🌡️ <span className={tempFeedback.tone}>{tempFeedback.text}</span>
-            </div>
-            <div className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-slate-300">
-              💧 <span className={humidityFeedback.tone}>{humidityFeedback.text}</span>
-            </div>
+        <SectionCard
+          title="Operational feedback"
+          subtitle="Situation analysis"
+        >
+          <div className="space-y-3 text-sm text-slate-300">
+            {snapshot?.traffic_index && snapshot.traffic_index > 75 && (
+              <p>🚗 Heavy traffic pressure detected.</p>
+            )}
+
+            {snapshot?.aqi && snapshot.aqi > 80 && (
+              <p>🌫 Air quality is deteriorating.</p>
+            )}
+
+            {snapshot?.temperature_c && snapshot.temperature_c > 32 && (
+              <p>🔥 High temperature detected.</p>
+            )}
+
+            {snapshot?.humidity_pct && snapshot.humidity_pct > 85 && (
+              <p>💧 Very humid conditions.</p>
+            )}
+
+            {snapshot?.transit_delay_min && snapshot.transit_delay_min > 8 && (
+              <p>🚇 Transit network delays increasing.</p>
+            )}
           </div>
         </SectionCard>
       </section>
 
-            <section className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
-        <SectionCard title="Kuala Lumpur live map" subtitle="Geospatial operations">
+      <section className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
+        <SectionCard title="Kuala Lumpur map" subtitle="Geospatial layer">
           <KLLiveMap points={mapPoints} />
         </SectionCard>
 
-        <SectionCard title="Map legend" subtitle="Traffic levels">
-          <div className="space-y-4">
-            <div className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-slate-300">
-              <div className="mb-2 flex items-center gap-3">
-                <span className="inline-block h-3 w-3 rounded-full bg-[#22c7a9]" />
-                <span className="font-medium text-white">Fluid traffic</span>
-              </div>
-              Road conditions are smooth and operationally comfortable.
-            </div>
-
-            <div className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-slate-300">
-              <div className="mb-2 flex items-center gap-3">
-                <span className="inline-block h-3 w-3 rounded-full bg-[#f5b942]" />
-                <span className="font-medium text-white">Moderate pressure</span>
-              </div>
-              Increased traffic density with manageable delays.
-            </div>
-
-            <div className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-slate-300">
-              <div className="mb-2 flex items-center gap-3">
-                <span className="inline-block h-3 w-3 rounded-full bg-[#ff6b6b]" />
-                <span className="font-medium text-white">Heavy congestion</span>
-              </div>
-              Strong road pressure requiring operational attention.
-            </div>
-
-            <div className="rounded-[22px] border border-cyan-400/15 bg-cyan-500/8 px-4 py-4 text-sm text-slate-200">
-              🗺️ This map is the foundation for the next phases: district heatmaps,
-              live route overlays, AI recommendations, and predictive congestion.
-            </div>
+        <SectionCard title="Traffic legend" subtitle="Road pressure">
+          <div className="space-y-4 text-sm text-slate-300">
+            <p>🟢 Fluid traffic</p>
+            <p>🟡 Moderate congestion</p>
+            <p>🔴 Heavy congestion</p>
           </div>
         </SectionCard>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <SectionCard title="AI insights preview" subtitle="Executive layer">
-          <div className="grid gap-4">
-            <div className="rounded-[24px] border border-cyan-400/15 bg-cyan-500/8 p-5">
-              <p className="text-xs uppercase tracking-[0.18em] text-cyan-300">
-                Insight 01
-              </p>
-              <p className="mt-2 text-base leading-7 text-white">
-                {snapshot?.district
-                  ? `📍 ${snapshot.district} is the current focus zone. Traffic is at ${snapshot?.traffic_index ?? "--"}, air quality is ${snapshot?.aqi ?? "--"}, and the transit delay is ${snapshot?.transit_delay_min ?? "--"} min.`
-                  : "Waiting for first live city update to generate a grounded insight."}
-              </p>
-            </div>
+        <AICopilotPanel snapshot={snapshot} />
 
-            <div className="rounded-[24px] border border-teal-400/15 bg-teal-500/8 p-5">
-              <p className="text-xs uppercase tracking-[0.18em] text-teal-300">
-                Insight 02
-              </p>
-              <p className="mt-2 text-base leading-7 text-white">
-                🤖 The next step is to connect a live map, a traffic prediction
-                model, and an AI copilot that explains anomalies and recommends
-                operational actions.
-              </p>
-            </div>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="System status" subtitle="Foundation">
-          <div className="space-y-4">
-            {[
-              {
-                label: "FastAPI live endpoint",
-                value: connected ? "Healthy" : "Check stream",
-              },
-              {
-                label: "Next.js dashboard shell",
-                value: "Ready",
-              },
-              {
-                label: "Real-time Kuala Lumpur map",
-                value: "Next step",
-              },
-              {
-                label: "AI copilot backend",
-                value: "Next step",
-              },
-            ].map((row) => (
-              <div
-                key={row.label}
-                className="flex items-center justify-between rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4"
-              >
-                <span className="text-sm text-slate-300">{row.label}</span>
-                <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs font-medium text-white">
-                  {row.value}
-                </span>
-              </div>
-            ))}
+        <SectionCard title="System status" subtitle="Infrastructure">
+          <div className="space-y-4 text-sm text-slate-300">
+            <p>⚡ FastAPI backend active</p>
+            <p>📡 Streaming pipeline running</p>
+            <p>🗺 Map layer active</p>
+            <p>🤖 AI Copilot ready</p>
           </div>
         </SectionCard>
       </section>
