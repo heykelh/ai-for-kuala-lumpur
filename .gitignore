@@ -1,31 +1,45 @@
 # Node / Next
-node_modules
-.next
-out
-dist
-build
+node_modules/
+.next/
+out/
+dist/
+build/
 *.log
 
 # Python
-.venv
-venv
-__pycache__
+.venv/
+.venv-dbt/
+venv/
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Env files
+# Env
 .env
 .env.local
 .env.*.local
 
-# OS
+# IDE / OS
+.vscode/
+.idea/
 .DS_Store
 Thumbs.db
 
-# IDE
-.vscode
-.idea
+# Turbo
+.turbo/
 
-# Turbopack
-.turbo
+# Airflow state
+orchestration/airflow/state/
+orchestration/airflow/logs/
+
+# dbt generated artifacts
+warehouse/dbt/target/
+warehouse/dbt/logs/
+dbt_packages/
+
+# Local warehouse data
+warehouse/duckdb/data/
+
+# Keep raw sample data only if you want them versioned
+# data/raw/city_signals/
