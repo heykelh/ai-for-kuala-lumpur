@@ -1,0 +1,16 @@
+name: "ai_for_kuala_lumpur"
+version: "1.0.0"
+config-version: 2
+
+profile: "ai_for_kuala_lumpur"
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+
+models:
+  ai_for_kuala_lumpur:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table

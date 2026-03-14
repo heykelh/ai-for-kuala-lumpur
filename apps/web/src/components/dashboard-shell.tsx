@@ -1,13 +1,17 @@
+"use client";
+
 import Link from "next/link";
 import { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 
 const navItems = [
-  { href: "/dashboard/live", label: "🏙️ Live Overview", active: true },
-  { href: "#", label: "🗺️ City Map", active: false },
-  { href: "#", label: "🤖 AI Assistant", active: false },
-  { href: "#", label: "📈 Predictions", active: false },
-  { href: "#", label: "📡 Streaming", active: false },
-  { href: "#", label: "🧭 Governance", active: false },
+  { href: "/dashboard/live", label: "🏙️ Live Overview" },
+  { href: "/dashboard/documents", label: "📚 Documents" },
+  { href: "#", label: "🗺️ City Map" },
+  { href: "#", label: "🤖 AI Assistant" },
+  { href: "#", label: "📈 Predictions" },
+  { href: "#", label: "📡 Streaming" },
+  { href: "#", label: "🧭 Governance" },
 ];
 
 export default function DashboardShell({
@@ -15,6 +19,8 @@ export default function DashboardShell({
 }: {
   children: ReactNode;
 }) {
+  const pathname = usePathname();
+
   return (
     <div className="dashboard-bg">
       <div className="flex min-h-screen">
@@ -35,32 +41,38 @@ export default function DashboardShell({
             </div>
 
             <nav className="space-y-2">
-              {navItems.map((item) => (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${
-                    item.active
-                      ? "bg-cyan-400/12 text-white shadow-lg ring-1 ring-cyan-300/15"
-                      : "text-white/80 hover:bg-white/6 hover:text-white"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              ))}
+              {navItems.map((item) => {
+                const isActive =
+                  item.href !== "#" && pathname.startsWith(item.href);
+
+                return (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${
+                      isActive
+                        ? "bg-cyan-400/12 text-white shadow-lg ring-1 ring-cyan-300/15"
+                        : "text-white/80 hover:bg-white/6 hover:text-white"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
             </nav>
           </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl">
             <p className="text-xs uppercase tracking-[0.2em] text-cyan-100/55">
-              Next milestones
+              Recruiter mode
             </p>
             <h3 className="heading-font mt-2 text-lg font-semibold">
-              Live map + AI copilot
+              Product + architecture
             </h3>
             <p className="mt-2 text-sm text-white/75">
-              The platform is ready to receive real-time map overlays, streaming
-              ingestion, AI analysis, and district-level forecasting.
+              Use the Documents page to explain the project scope, the
+              architecture, the stack, and the roadmap like a real enterprise
+              platform.
             </p>
           </div>
         </aside>
