@@ -1,13 +1,13 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { Orbitron, Inter } from "next/font/google";
+import { Sora, Manrope } from "next/font/google";
 
-const orbitron = Orbitron({
+const sora = Sora({
   subsets: ["latin"],
   variable: "--font-heading",
 });
 
-const inter = Inter({
+const manrope = Manrope({
   subsets: ["latin"],
   variable: "--font-body",
 });
@@ -23,10 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${orbitron.variable} ${inter.variable}`}
-    >
+    <html lang="en" className={`${sora.variable} ${manrope.variable}`}>
       <body>{children}</body>
     </html>
   );

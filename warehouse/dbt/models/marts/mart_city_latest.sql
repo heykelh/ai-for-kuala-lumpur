@@ -5,6 +5,7 @@ select
     avg(aqi) as avg_aqi,
     avg(temperature_c) as avg_temperature_c,
     avg(humidity_pct) as avg_humidity_pct,
-    avg(transit_delay_min) as avg_transit_delay_min
+    avg(transit_delay_min) as avg_transit_delay_min,
+    count(*) as signal_count
 from {{ ref('stg_city_signals') }}
 group by district

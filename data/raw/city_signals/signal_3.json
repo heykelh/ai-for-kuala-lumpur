@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-14T21:42:00",
+  "district": "Petaling Jaya",
+  "traffic_index": 69,
+  "congestion_level": "moderate",
+  "aqi": 54,
+  "air_quality_status": "moderate",
+  "temperature_c": 31.2,
+  "humidity_pct": 76,
+  "transit_delay_min": 5,
+  "source": "manual_seed"
+}

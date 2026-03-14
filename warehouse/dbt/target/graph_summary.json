@@ -1,0 +1,1 @@
+{"_invocation_id": "7fdd5485-bcd8-44f6-a80e-b5017e4b3d20", "linked": {"0": {"name": "model.ai_for_kuala_lumpur.mart_city_latest", "type": "model", "succ": [2]}, "1": {"name": "model.ai_for_kuala_lumpur.stg_city_signals", "type": "model", "succ": [0]}, "2": {"name": "model.ai_for_kuala_lumpur.mart_city_risk", "type": "model"}}}

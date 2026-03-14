@@ -24,14 +24,14 @@ export default function DashboardShell({
   return (
     <div className="dashboard-bg">
       <div className="flex min-h-screen">
-        <aside className="sidebar-city hidden w-[280px] shrink-0 flex-col justify-between border-r border-white/8 p-6 text-white xl:flex">
+        <aside className="sidebar-city hidden w-[290px] shrink-0 flex-col justify-between border-r border-white/8 p-6 text-white xl:flex">
           <div>
             <div className="mb-10 flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-400/10 text-lg font-bold shadow-lg">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-400/10 text-lg shadow-lg">
                 🌆
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.25em] text-cyan-200/70">
+                <p className="text-xs uppercase tracking-[0.25em] text-cyan-200/65">
                   AI Platform
                 </p>
                 <h2 className="heading-font text-lg font-semibold">
@@ -51,8 +51,8 @@ export default function DashboardShell({
                     href={item.href}
                     className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${
                       isActive
-                        ? "bg-cyan-400/12 text-white shadow-lg ring-1 ring-cyan-300/15"
-                        : "text-white/80 hover:bg-white/6 hover:text-white"
+                        ? "bg-cyan-400/10 text-white ring-1 ring-cyan-300/15"
+                        : "text-white/78 hover:bg-white/5 hover:text-white"
                     }`}
                   >
                     {item.label}
@@ -62,26 +62,25 @@ export default function DashboardShell({
             </nav>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl">
-            <p className="text-xs uppercase tracking-[0.2em] text-cyan-100/55">
-              Recruiter mode
+          <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
+            <p className="text-xs uppercase tracking-[0.2em] text-cyan-100/50">
+              Enterprise track
             </p>
             <h3 className="heading-font mt-2 text-lg font-semibold">
-              Product + architecture
+              Data platform upgrade
             </h3>
-            <p className="mt-2 text-sm text-white/75">
-              Use the Documents page to explain the project scope, the
-              architecture, the stack, and the roadmap like a real enterprise
-              platform.
+            <p className="mt-2 text-sm leading-7 text-white/72">
+              Next sprint: Airflow, S3-compatible raw storage, Snowflake, dbt,
+              and a real LLM layer on top of curated analytics tables.
             </p>
           </div>
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 border-b border-white/8 bg-[#08111b]/72 px-6 py-4 backdrop-blur-xl">
+          <header className="sticky top-0 z-30 border-b border-white/8 bg-[#07111b]/72 px-6 py-4 backdrop-blur-xl">
             <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.22em] text-cyan-300/90">
+                <p className="text-xs uppercase tracking-[0.22em] text-cyan-300/85">
                   Real-time city intelligence
                 </p>
                 <h1 className="heading-font mt-1 text-xl font-semibold text-white">
@@ -97,7 +96,7 @@ export default function DashboardShell({
                 <div className="pill rounded-2xl px-4 py-2 text-sm text-slate-200">
                   🌍 Urban analytics
                 </div>
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/6 text-sm font-semibold text-white">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-sm font-semibold text-white">
                   MH
                 </div>
               </div>

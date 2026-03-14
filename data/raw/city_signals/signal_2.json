@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-14T21:41:00",
+  "district": "Bangsar",
+  "traffic_index": 58,
+  "congestion_level": "fluid",
+  "aqi": 44,
+  "air_quality_status": "good",
+  "temperature_c": 30.1,
+  "humidity_pct": 72,
+  "transit_delay_min": 3,
+  "source": "manual_seed"
+}

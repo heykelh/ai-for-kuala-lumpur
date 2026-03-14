@@ -6,4 +6,7 @@ sse-starlette==2.2.1
 redis==5.2.1
 kafka-python==2.0.6
 minio==7.2.15
-snowflake-connector-python==3.14.0
+duckdb==1.2.2
+pandas==2.2.3
+pyarrow==19.0.1
+minio
