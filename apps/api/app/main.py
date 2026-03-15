@@ -1,10 +1,14 @@
 from datetime import datetime, timezone
+from dotenv import load_dotenv
+from pathlib import Path
 import asyncio
 import json
+import os
 import random
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from openai import OpenAI
 from pydantic import BaseModel
 from redis import Redis
 from sse_starlette.sse import EventSourceResponse
@@ -13,7 +17,7 @@ from .warehouse import get_latest_city_metrics, get_city_risk
 
 app = FastAPI(
     title="AI for Kuala Lumpur API",
-    version="0.3.0",
+    version="0.4.0",
     description="Real-time AI city intelligence API for Kuala Lumpur.",
 )
 
@@ -36,6 +40,20 @@ DISTRICTS = [
     "Mont Kiara",
     "Petaling Jaya",
 ]
+
+ENV_PATH = Path(__file__).resolve().parents[1] / ".env"
+load_dotenv(dotenv_path=ENV_PATH)
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "llama3-70b-8192")
+
+llm_client = None
+if OPENAI_API_KEY:
+    llm_client = OpenAI(
+        api_key=OPENAI_API_KEY,
+        base_url=OPENAI_BASE_URL,
+    )
 
 
 class AIAnalysisRequest(BaseModel):
@@ -219,6 +237,81 @@ def build_ai_analysis(question: str, snapshot: dict | None) -> dict:
     }
 
 
+def analyze_city_data_with_llm(
+    snapshot: dict | None,
+    warehouse_risk: list[dict] | None,
+    question: str,
+) -> dict:
+    if llm_client is None:
+        fallback = build_ai_analysis(question, snapshot)
+        fallback["answer"] = f"{fallback['answer']} (LLM not configured, fallback mode active.)"
+        return fallback
+
+    system_prompt = """
+You are an AI urban operations analyst monitoring Kuala Lumpur.
+
+Your role:
+- analyze real-time city signals
+- analyze warehouse analytics produced by dbt marts
+- summarize the situation clearly
+- identify operational risks
+- recommend concrete actions
+
+Rules:
+- stay concise and actionable
+- be grounded only in the provided data
+- do not invent missing facts
+- structure your answer in plain business language
+"""
+
+    snapshot_json = json.dumps(snapshot, ensure_ascii=False, indent=2, default=str) if snapshot else "None"
+    warehouse_risk_json = json.dumps(warehouse_risk, ensure_ascii=False, indent=2, default=str) if warehouse_risk else "None"
+
+    user_prompt = f"""
+User question:
+{question}
+
+LIVE SNAPSHOT:
+{snapshot_json}
+
+WAREHOUSE ANALYTICS:
+{warehouse_risk_json}
+
+Please provide:
+1. A short situation summary
+2. Main risks
+3. Recommended action
+"""
+
+    completion = llm_client.chat.completions.create(
+        model=OPENAI_MODEL,
+        temperature=0.2,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+    )
+
+    answer = completion.choices[0].message.content or "No answer returned by the LLM."
+
+    severity = "low"
+    joined_text = answer.lower()
+    if any(word in joined_text for word in ["high risk", "severe", "critical", "urgent"]):
+        severity = "high"
+    elif any(word in joined_text for word in ["moderate", "watch", "elevated", "attention"]):
+        severity = "medium"
+
+    return {
+        "answer": answer,
+        "severity": severity,
+        "highlights": [
+            "Live snapshot analyzed by LLM.",
+            "Warehouse marts included in the reasoning.",
+        ],
+        "recommended_action": "Review the generated AI summary and compare it with live and warehouse indicators.",
+    }
+
+
 @app.get("/health")
 def health() -> dict:
     redis_client = get_redis_client()
@@ -226,6 +319,7 @@ def health() -> dict:
         "status": "ok",
         "service": "ai-for-kuala-lumpur-api",
         "redis_connected": redis_client is not None,
+        "llm_configured": llm_client is not None,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -266,6 +360,24 @@ def analyze_live_data(payload: AIAnalysisRequest) -> dict:
     return {
         "question": payload.question,
         "result": result,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.post("/api/ai/copilot")
+def ai_copilot(payload: AIAnalysisRequest) -> dict:
+    snapshot = payload.snapshot
+    warehouse_risk = get_city_risk()
+
+    result = analyze_city_data_with_llm(
+        snapshot=snapshot,
+        warehouse_risk=warehouse_risk,
+        question=payload.question,
+    )
+
+    return {
+        "question": payload.question,
+        "analysis": result,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 

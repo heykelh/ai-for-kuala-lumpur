@@ -59,7 +59,7 @@ export default function AICopilotPanel({
     setError(null);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/ai/analyze`, {
+      const res = await fetch(`${API_BASE_URL}/api/ai/copilot`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
