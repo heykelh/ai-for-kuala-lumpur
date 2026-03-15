@@ -9,9 +9,11 @@ from pydantic import BaseModel
 from redis import Redis
 from sse_starlette.sse import EventSourceResponse
 
+from .warehouse import get_latest_city_metrics, get_city_risk
+
 app = FastAPI(
     title="AI for Kuala Lumpur API",
-    version="0.2.0",
+    version="0.3.0",
     description="Real-time AI city intelligence API for Kuala Lumpur.",
 )
 
@@ -175,8 +177,7 @@ def build_ai_analysis(question: str, snapshot: dict | None) -> dict:
     if "summary" in normalized_question or "situation" in normalized_question:
         answer = (
             f"Current situation in {district}: traffic, air quality, weather, and transit signals "
-            f"show a {severity} operational pressure profile. The main drivers are the live traffic, "
-            f"environmental conditions, and transit delay levels observed in the latest snapshot."
+            f"show a {severity} operational pressure profile."
         )
     elif "traffic" in normalized_question:
         answer = (
@@ -190,18 +191,16 @@ def build_ai_analysis(question: str, snapshot: dict | None) -> dict:
         )
     elif "temperature" in normalized_question or "humidity" in normalized_question or "weather" in normalized_question:
         answer = (
-            f"Weather analysis for {district}: temperature is {temperature_c}°C and humidity is {humidity_pct}%. "
-            f"These conditions {'suggest elevated urban heat stress' if temperature_c is not None and temperature_c >= 33 else 'remain within typical Kuala Lumpur urban conditions'}."
+            f"Weather analysis for {district}: temperature is {temperature_c}°C and humidity is {humidity_pct}%."
         )
     elif "recommend" in normalized_question or "action" in normalized_question:
         answer = (
             f"Recommended action for {district}: prioritize operational monitoring, especially where road pressure "
-            f"and transit delay are elevated. If this pattern persists, the next step should be district-level hotspot mapping and predictive congestion scoring."
+            f"and transit delay are elevated."
         )
     else:
         answer = (
-            f"The latest live snapshot for {district} indicates a {severity} level operational situation. "
-            f"I analyzed traffic, AQI, temperature, humidity, and transit delay to produce this assessment."
+            f"The latest live snapshot for {district} indicates a {severity} level operational situation."
         )
 
     recommended_action = (
@@ -268,4 +267,20 @@ def analyze_live_data(payload: AIAnalysisRequest) -> dict:
         "question": payload.question,
         "result": result,
         "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.get("/api/warehouse/latest")
+def warehouse_latest():
+    return {
+        "source": "duckdb",
+        "data": get_latest_city_metrics(),
+    }
+
+
+@app.get("/api/warehouse/risk")
+def warehouse_risk():
+    return {
+        "source": "duckdb",
+        "data": get_city_risk(),
     }
