@@ -55,10 +55,12 @@ services:
       - ./orchestration/airflow/plugins:/opt/airflow/plugins
       - ./orchestration/airflow/state:/opt/airflow/state
       - ./data:/opt/airflow/data
+      - ./warehouse:/opt/warehouse
     entrypoint: /bin/bash
     command:
       - -c
       - |
+        pip install dbt-core dbt-duckdb duckdb pandas &&
         airflow db migrate &&
         airflow users create \
           --username admin \
@@ -86,9 +88,11 @@ services:
       - ./orchestration/airflow/plugins:/opt/airflow/plugins
       - ./orchestration/airflow/state:/opt/airflow/state
       - ./data:/opt/airflow/data
+      - ./warehouse:/opt/warehouse
     ports:
       - "8080:8080"
-    command: webserver
+    command: >
+      bash -c "pip install dbt-core dbt-duckdb duckdb pandas && airflow webserver"
 
   airflow-scheduler:
     image: apache/airflow:2.10.5
@@ -108,4 +112,6 @@ services:
       - ./orchestration/airflow/plugins:/opt/airflow/plugins
       - ./orchestration/airflow/state:/opt/airflow/state
       - ./data:/opt/airflow/data
-    command: scheduler
+      - ./warehouse:/opt/warehouse
+    command: >
+      bash -c "pip install dbt-core dbt-duckdb duckdb pandas && airflow scheduler"

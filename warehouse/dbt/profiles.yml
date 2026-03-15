@@ -1,0 +1,7 @@
+ai_for_kuala_lumpur:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: /opt/warehouse/duckdb/data/ai_kl.duckdb
+      threads: 4

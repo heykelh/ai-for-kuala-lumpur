@@ -20,6 +20,8 @@ def main():
 
     df = pd.DataFrame(records)
 
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
     con = duckdb.connect(str(DB_PATH))
     con.execute("""
         create table if not exists raw_city_signals (
