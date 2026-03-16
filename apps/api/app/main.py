@@ -14,6 +14,7 @@ from redis import Redis
 from sse_starlette.sse import EventSourceResponse
 
 from .warehouse import get_latest_city_metrics, get_city_risk
+from .warehouse_ops import read_warehouse_status, refresh_warehouse
 
 app = FastAPI(
     title="AI for Kuala Lumpur API",
@@ -528,4 +529,20 @@ def get_alerts():
     return {
         "source": "live-and-warehouse",
         "data": build_live_alerts(snapshot, warehouse_risk),
+    }
+
+@app.get("/api/warehouse/status")
+def warehouse_status():
+    return {
+        "source": "warehouse-status-file",
+        "data": read_warehouse_status(),
+    }
+
+
+@app.post("/api/warehouse/refresh")
+def warehouse_refresh():
+    result = refresh_warehouse()
+    return {
+        "source": "manual-refresh",
+        "data": result,
     }

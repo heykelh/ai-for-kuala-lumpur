@@ -44,6 +44,17 @@ type WarehouseRiskResponse = {
   data: WarehouseRiskRow[];
 };
 
+type WarehouseStatusResponse = {
+  source: string;
+  data: {
+    status: string;
+    last_refresh_at: string | null;
+    last_success_at: string | null;
+    last_error: unknown;
+    last_row_count_hint?: string | null;
+  };
+};
+
 const API_BASE_URL = "http://localhost:8000";
 
 const mainBars = [72, 56, 68, 49, 65, 73, 45, 61, 58, 79, 86, 74];
@@ -163,8 +174,8 @@ function getTransitFeedback(value?: number) {
   }
   return {
     text: "✅ Transit flow is healthy and responsive.",
-      tone: "feedback-good",
-    };
+    tone: "feedback-good",
+  };
 }
 
 function MetricCard({
@@ -233,6 +244,8 @@ export default function LiveDashboardPage() {
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warehouseRisk, setWarehouseRisk] = useState<WarehouseRiskRow[]>([]);
+  const [warehouseStatus, setWarehouseStatus] =
+    useState<WarehouseStatusResponse["data"] | null>(null);
 
   useEffect(() => {
     let eventSource: EventSource | null = null;
@@ -271,6 +284,23 @@ export default function LiveDashboardPage() {
       }
     }
 
+    async function loadWarehouseStatus() {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/warehouse/status`, {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch warehouse status.");
+        }
+
+        const json: WarehouseStatusResponse = await response.json();
+        setWarehouseStatus(json.data);
+      } catch {
+        // keep silent
+      }
+    }
+
     function connectStream() {
       eventSource = new EventSource(`${API_BASE_URL}/api/live/stream`);
 
@@ -296,14 +326,17 @@ export default function LiveDashboardPage() {
 
     loadInitialData();
     loadWarehouseRisk();
+    loadWarehouseStatus();
     connectStream();
 
     const poll = setInterval(() => {
       loadInitialData();
+      loadWarehouseStatus();
     }, 3000);
 
     const warehousePoll = setInterval(() => {
       loadWarehouseRisk();
+      loadWarehouseStatus();
     }, 10000);
 
     return () => {
@@ -419,6 +452,20 @@ export default function LiveDashboardPage() {
             </div>
 
             <div className="pill rounded-3xl px-5 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                Warehouse
+              </p>
+              <p className="mt-2 text-sm font-medium text-white">
+                {warehouseStatus?.status ?? "--"}
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                {warehouseStatus?.last_success_at
+                  ? new Date(warehouseStatus.last_success_at).toLocaleString()
+                  : "No successful refresh yet"}
+              </p>
+            </div>
+
+            <div className="pill rounded-3xl px-5 py-4 sm:col-span-2">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
                 Last update
               </p>
@@ -711,6 +758,10 @@ export default function LiveDashboardPage() {
               {
                 label: "DuckDB warehouse marts",
                 value: warehouseRisk.length > 0 ? "Ready" : "Loading",
+              },
+              {
+                label: "Warehouse refresh",
+                value: warehouseStatus?.status ?? "--",
               },
             ].map((row) => (
               <div
