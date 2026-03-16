@@ -7,11 +7,11 @@ import { usePathname } from "next/navigation";
 const navItems = [
   { href: "/dashboard/live", label: "🏙️ Live Overview" },
   { href: "/dashboard/documents", label: "📚 Documents" },
-  { href: "#", label: "🗺️ City Map" },
-  { href: "#", label: "🤖 AI Assistant" },
-  { href: "#", label: "📈 Predictions" },
-  { href: "#", label: "📡 Streaming" },
-  { href: "#", label: "🧭 Governance" },
+  { href: "/dashboard/map", label: "🗺️ City Map" },
+  { href: "/dashboard/ai", label: "🤖 AI Assistant" },
+  { href: "/dashboard/predictions", label: "📈 Predictions" },
+  { href: "/dashboard/streaming", label: "📡 Streaming" },
+  { href: "/dashboard/governance", label: "🧭 Governance" },
 ];
 
 export default function DashboardShell({
@@ -70,7 +70,7 @@ export default function DashboardShell({
               Data platform upgrade
             </h3>
             <p className="mt-2 text-sm leading-7 text-white/72">
-              Next sprint: Airflow, S3-compatible raw storage, Snowflake, dbt,
+              Next sprint: Airflow, S3-compatible raw storage, DuckDB, dbt,
               and a real LLM layer on top of curated analytics tables.
             </p>
           </div>

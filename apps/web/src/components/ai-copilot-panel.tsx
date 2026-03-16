@@ -3,15 +3,16 @@
 import { useState } from "react";
 
 type LiveSnapshot = {
-  timestamp: string;
+  timestamp?: string;
   district: string;
   traffic_index: number;
-  congestion_level: string;
+  congestion_level?: string;
   aqi: number;
-  air_quality_status: string;
+  air_quality_status?: string;
   temperature_c: number;
   humidity_pct: number;
   transit_delay_min: number;
+  source?: string;
 };
 
 const API_BASE_URL = "http://localhost:8000";
@@ -23,13 +24,13 @@ const suggestedQuestions = [
   "What is your recommended action right now?",
 ];
 
-type AIResponse = {
+type CopilotResponse = {
   question: string;
-  result: {
+  analysis: {
     answer: string;
-    severity: string;
-    highlights: string[];
-    recommended_action: string;
+    severity?: string;
+    highlights?: string[];
+    recommended_action?: string;
   };
   timestamp: string;
 };
@@ -51,7 +52,7 @@ export default function AICopilotPanel({
 }) {
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
-  const [response, setResponse] = useState<AIResponse | null>(null);
+  const [response, setResponse] = useState<CopilotResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function runAnalysis(userQuestion: string) {
@@ -71,10 +72,10 @@ export default function AICopilotPanel({
       });
 
       if (!res.ok) {
-        throw new Error("AI analysis request failed.");
+        throw new Error("AI copilot request failed.");
       }
 
-      const json: AIResponse = await res.json();
+      const json: CopilotResponse = await res.json();
       setResponse(json);
       setQuestion(userQuestion);
     } catch (err) {
@@ -83,6 +84,12 @@ export default function AICopilotPanel({
       setLoading(false);
     }
   }
+
+  const analysis = response?.analysis;
+  const severity = analysis?.severity ?? "low";
+  const highlights = analysis?.highlights ?? [];
+  const recommendedAction =
+    analysis?.recommended_action ?? "No recommended action returned.";
 
   return (
     <div className="glass-card soft-glow rounded-[30px] p-6">
@@ -94,8 +101,8 @@ export default function AICopilotPanel({
           Live operations analyst
         </h2>
         <p className="mt-3 text-sm leading-6 text-slate-300">
-          Ask the AI copilot to interpret the current live snapshot and produce
-          an operational assessment.
+          Ask the AI copilot to interpret the current live snapshot and the
+          warehouse analytics to produce an operational assessment.
         </p>
       </div>
 
@@ -119,7 +126,7 @@ export default function AICopilotPanel({
           <input
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Example: Analyze the current traffic and recommend an action."
+            placeholder="Example: Analyze the current city risks and recommend an action."
             className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-[#0b1623] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
           />
           <button
@@ -138,42 +145,44 @@ export default function AICopilotPanel({
         </div>
       )}
 
-      {response && (
+      {analysis && (
         <div className="mt-5 space-y-4">
           <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
             <div className="mb-3 flex items-center justify-between gap-3">
               <p className="text-sm text-slate-400">AI answer</p>
               <span
                 className={`rounded-full border px-3 py-1 text-xs font-medium ${severityBadge(
-                  response.result.severity
+                  severity
                 )}`}
               >
-                {response.result.severity} severity
+                {severity} severity
               </span>
             </div>
-            <p className="text-base leading-7 text-white">
-              {response.result.answer}
-            </p>
-          </div>
-
-          <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
-            <p className="mb-3 text-sm text-slate-400">Highlights</p>
-            <div className="space-y-2">
-              {response.result.highlights.map((item) => (
-                <div
-                  key={item}
-                  className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-sm text-slate-200"
-                >
-                  {item}
-                </div>
-              ))}
+            <div className="whitespace-pre-wrap text-base leading-7 text-white">
+              {analysis.answer}
             </div>
           </div>
+
+          {highlights.length > 0 && (
+            <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
+              <p className="mb-3 text-sm text-slate-400">Highlights</p>
+              <div className="space-y-2">
+                {highlights.map((item) => (
+                  <div
+                    key={item}
+                    className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-sm text-slate-200"
+                  >
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="rounded-[24px] border border-cyan-400/15 bg-cyan-500/8 p-5">
             <p className="text-sm text-cyan-200">Recommended action</p>
             <p className="mt-2 text-base leading-7 text-white">
-              {response.result.recommended_action}
+              {recommendedAction}
             </p>
           </div>
         </div>

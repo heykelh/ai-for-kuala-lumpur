@@ -311,6 +311,130 @@ Please provide:
         "recommended_action": "Review the generated AI summary and compare it with live and warehouse indicators.",
     }
 
+def build_live_alerts(snapshot: dict | None, warehouse_risk: list[dict] | None) -> list[dict]:
+    alerts = []
+
+    if snapshot:
+        district = snapshot.get("district", "Unknown")
+        traffic_index = snapshot.get("traffic_index", 0)
+        aqi = snapshot.get("aqi", 0)
+        transit_delay_min = snapshot.get("transit_delay_min", 0)
+        temperature_c = snapshot.get("temperature_c", 0)
+
+        if traffic_index >= 80:
+            alerts.append(
+                {
+                    "type": "traffic",
+                    "severity": "high",
+                    "message_en": f"Heavy road congestion detected in {district}.",
+                    "message_fr": f"Forte congestion routière détectée à {district}.",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+        elif traffic_index >= 60:
+            alerts.append(
+                {
+                    "type": "traffic",
+                    "severity": "medium",
+                    "message_en": f"Traffic pressure is rising in {district}.",
+                    "message_fr": f"La pression du trafic augmente à {district}.",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+
+        if aqi >= 101:
+            alerts.append(
+                {
+                    "type": "air",
+                    "severity": "high",
+                    "message_en": f"Air quality is unhealthy in {district}.",
+                    "message_fr": f"La qualité de l’air est mauvaise à {district}.",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+        elif aqi >= 51:
+            alerts.append(
+                {
+                    "type": "air",
+                    "severity": "medium",
+                    "message_en": f"Air quality is moderately degraded in {district}.",
+                    "message_fr": f"La qualité de l’air est modérément dégradée à {district}.",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+
+        if transit_delay_min >= 10:
+            alerts.append(
+                {
+                    "type": "transit",
+                    "severity": "high",
+                    "message_en": f"Significant transit disruption detected ({transit_delay_min} min delay).",
+                    "message_fr": f"Perturbation importante des transports détectée ({transit_delay_min} min de retard).",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+        elif transit_delay_min >= 5:
+            alerts.append(
+                {
+                    "type": "transit",
+                    "severity": "medium",
+                    "message_en": f"Transit delays are noticeable ({transit_delay_min} min).",
+                    "message_fr": f"Les retards de transport deviennent visibles ({transit_delay_min} min).",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+
+        if temperature_c >= 33:
+            alerts.append(
+                {
+                    "type": "weather",
+                    "severity": "medium",
+                    "message_en": f"Urban heat is elevated in {district}.",
+                    "message_fr": f"La chaleur urbaine est élevée à {district}.",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+
+    if warehouse_risk:
+        for row in warehouse_risk:
+            risk = str(row.get("city_risk_level", "low")).lower()
+            district = row.get("district", "Unknown")
+            if risk == "high":
+                alerts.append(
+                    {
+                        "type": "warehouse",
+                        "severity": "high",
+                        "message_en": f"Warehouse analytics classify {district} as high risk.",
+                        "message_fr": f"Les analytics du warehouse classent {district} en risque élevé.",
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    }
+                )
+            elif risk == "medium":
+                alerts.append(
+                    {
+                        "type": "warehouse",
+                        "severity": "medium",
+                        "message_en": f"Warehouse analytics classify {district} as medium risk.",
+                        "message_fr": f"Les analytics du warehouse classent {district} en risque moyen.",
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    }
+                )
+
+    if not alerts:
+        alerts.append(
+            {
+                "type": "system",
+                "severity": "low",
+                "message_en": "No major operational alert detected.",
+                "message_fr": "Aucune alerte opérationnelle majeure détectée.",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        )
+
+    severity_rank = {"high": 0, "medium": 1, "low": 2}
+    alerts.sort(key=lambda x: severity_rank.get(x["severity"], 3))
+    return alerts
+
 
 @app.get("/health")
 def health() -> dict:
@@ -395,4 +519,13 @@ def warehouse_risk():
     return {
         "source": "duckdb",
         "data": get_city_risk(),
+    }
+
+@app.get("/api/alerts")
+def get_alerts():
+    snapshot = get_latest_snapshot()
+    warehouse_risk = get_city_risk()
+    return {
+        "source": "live-and-warehouse",
+        "data": build_live_alerts(snapshot, warehouse_risk),
     }

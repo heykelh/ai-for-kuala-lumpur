@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { Sora, Manrope } from "next/font/google";
+import { LanguageProvider } from "@/components/language-provider";
 
 const sora = Sora({
   subsets: ["latin"],
@@ -24,7 +25,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${sora.variable} ${manrope.variable}`}>
-      <body>{children}</body>
+      <body>
+        <LanguageProvider>{children}</LanguageProvider>
+      </body>
     </html>
   );
 }

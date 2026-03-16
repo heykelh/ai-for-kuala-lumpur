@@ -163,8 +163,8 @@ function getTransitFeedback(value?: number) {
   }
   return {
     text: "✅ Transit flow is healthy and responsive.",
-    tone: "feedback-good",
-  };
+      tone: "feedback-good",
+    };
 }
 
 function MetricCard({
@@ -298,8 +298,18 @@ export default function LiveDashboardPage() {
     loadWarehouseRisk();
     connectStream();
 
+    const poll = setInterval(() => {
+      loadInitialData();
+    }, 3000);
+
+    const warehousePoll = setInterval(() => {
+      loadWarehouseRisk();
+    }, 10000);
+
     return () => {
       eventSource?.close();
+      clearInterval(poll);
+      clearInterval(warehousePoll);
     };
   }, []);
 

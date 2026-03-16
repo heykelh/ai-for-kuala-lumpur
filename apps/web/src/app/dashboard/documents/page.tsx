@@ -74,21 +74,11 @@ export default function DocumentsPage() {
         </DocCard>
 
         <DocCard title="Recruiter takeaway" subtitle="What this proves">
-          <Bullet>
-            ✅ End-to-end architecture mindset
-          </Bullet>
-          <Bullet>
-            ✅ Ability to build both backend and frontend layers
-          </Bullet>
-          <Bullet>
-            ✅ Knowledge of real-time data serving patterns
-          </Bullet>
-          <Bullet>
-            ✅ Readiness for enterprise stack integration
-          </Bullet>
-          <Bullet>
-            ✅ Clear documentation and project storytelling
-          </Bullet>
+          <Bullet>✅ End-to-end architecture mindset</Bullet>
+          <Bullet>✅ Ability to build both backend and frontend layers</Bullet>
+          <Bullet>✅ Knowledge of real-time data serving patterns</Bullet>
+          <Bullet>✅ Readiness for enterprise stack integration</Bullet>
+          <Bullet>✅ Clear documentation and project storytelling</Bullet>
         </DocCard>
       </section>
 
@@ -159,8 +149,7 @@ export default function DocumentsPage() {
 
           <Bullet>
             <strong className="text-white">Target enterprise stack:</strong>{" "}
-            Airflow, S3-compatible storage, Snowflake, dbt, ML models, and a
-            real LLM / RAG layer.
+            Airflow, MinIO, DuckDB, dbt, ML models, and a real LLM / RAG layer.
           </Bullet>
         </DocCard>
 
@@ -189,8 +178,8 @@ export default function DocumentsPage() {
           </Bullet>
 
           <Bullet>
-            <strong className="text-white">Sprint 2:</strong> Airflow, S3-style
-            storage, Snowflake integration, dbt models, raw/bronze/silver/gold
+            <strong className="text-white">Sprint 2:</strong> Airflow, MinIO,
+            DuckDB integration, dbt models, raw/bronze/silver/gold style
             architecture.
           </Bullet>
 
