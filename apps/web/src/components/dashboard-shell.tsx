@@ -3,16 +3,7 @@
 import Link from "next/link";
 import { ReactNode } from "react";
 import { usePathname } from "next/navigation";
-
-const navItems = [
-  { href: "/dashboard/live", label: "🏙️ Live Overview" },
-  { href: "/dashboard/documents", label: "📚 Documents" },
-  { href: "/dashboard/map", label: "🗺️ City Map" },
-  { href: "/dashboard/ai", label: "🤖 AI Assistant" },
-  { href: "/dashboard/predictions", label: "📈 Predictions" },
-  { href: "/dashboard/streaming", label: "📡 Streaming" },
-  { href: "/dashboard/governance", label: "🧭 Governance" },
-];
+import { useLanguage } from "@/components/language-provider";
 
 export default function DashboardShell({
   children,
@@ -20,6 +11,54 @@ export default function DashboardShell({
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const { language, toggleLanguage } = useLanguage();
+
+  const t = {
+    en: {
+      live: "🏙️ Live Overview",
+      docs: "📚 Documents",
+      map: "🗺️ City Map",
+      ai: "🤖 AI Assistant",
+      predictions: "📈 Predictions",
+      streaming: "📡 Streaming",
+      governance: "🧭 Governance",
+      enterpriseTrack: "Enterprise track",
+      upgradeTitle: "Data platform upgrade",
+      upgradeText:
+        "Next sprint: orchestration, storage, warehouse automation, bilingual product experience, and AI analytics grounded in curated data.",
+      headerEyebrow: "Real-time city intelligence",
+      headerTitle: "AI for Kuala Lumpur",
+      liveSystem: "Live system",
+      urbanAnalytics: "Urban analytics",
+    },
+    fr: {
+      live: "🏙️ Vue temps réel",
+      docs: "📚 Documents",
+      map: "🗺️ Carte urbaine",
+      ai: "🤖 Assistant IA",
+      predictions: "📈 Prédictions",
+      streaming: "📡 Streaming",
+      governance: "🧭 Gouvernance",
+      enterpriseTrack: "Parcours entreprise",
+      upgradeTitle: "Montée en puissance data",
+      upgradeText:
+        "Prochain sprint : orchestration, stockage, automatisation du warehouse, expérience produit bilingue et analytics IA basées sur des données préparées.",
+      headerEyebrow: "Intelligence urbaine temps réel",
+      headerTitle: "AI for Kuala Lumpur",
+      liveSystem: "Système live",
+      urbanAnalytics: "Analytics urbaines",
+    },
+  }[language];
+
+  const navItems = [
+    { href: "/dashboard/live", label: t.live },
+    { href: "/dashboard/documents", label: t.docs },
+    { href: "/dashboard/map", label: t.map },
+    { href: "/dashboard/ai", label: t.ai },
+    { href: "/dashboard/predictions", label: t.predictions },
+    { href: "/dashboard/streaming", label: t.streaming },
+    { href: "/dashboard/governance", label: t.governance },
+  ];
 
   return (
     <div className="dashboard-bg">
@@ -62,17 +101,25 @@ export default function DashboardShell({
             </nav>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
-            <p className="text-xs uppercase tracking-[0.2em] text-cyan-100/50">
-              Enterprise track
-            </p>
-            <h3 className="heading-font mt-2 text-lg font-semibold">
-              Data platform upgrade
-            </h3>
-            <p className="mt-2 text-sm leading-7 text-white/72">
-              Next sprint: Airflow, S3-compatible raw storage, DuckDB, dbt,
-              and a real LLM layer on top of curated analytics tables.
-            </p>
+          <div className="space-y-4">
+            <button
+              onClick={toggleLanguage}
+              className="w-full rounded-2xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-cyan-400/20"
+            >
+              {language === "en" ? "🇫🇷 Passer en français" : "🇬🇧 Switch to English"}
+            </button>
+
+            <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
+              <p className="text-xs uppercase tracking-[0.2em] text-cyan-100/50">
+                {t.enterpriseTrack}
+              </p>
+              <h3 className="heading-font mt-2 text-lg font-semibold">
+                {t.upgradeTitle}
+              </h3>
+              <p className="mt-2 text-sm leading-7 text-white/72">
+                {t.upgradeText}
+              </p>
+            </div>
           </div>
         </aside>
 
@@ -81,20 +128,20 @@ export default function DashboardShell({
             <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
               <div>
                 <p className="text-xs uppercase tracking-[0.22em] text-cyan-300/85">
-                  Real-time city intelligence
+                  {t.headerEyebrow}
                 </p>
                 <h1 className="heading-font mt-1 text-xl font-semibold text-white">
-                  AI for Kuala Lumpur
+                  {t.headerTitle}
                 </h1>
               </div>
 
               <div className="flex items-center gap-3">
                 <div className="pill rounded-2xl px-4 py-2 text-sm text-slate-200">
                   <span className="mr-2 status-dot status-online" />
-                  Live system
+                  {t.liveSystem}
                 </div>
                 <div className="pill rounded-2xl px-4 py-2 text-sm text-slate-200">
-                  🌍 Urban analytics
+                  🌍 {t.urbanAnalytics}
                 </div>
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-sm font-semibold text-white">
                   MH
