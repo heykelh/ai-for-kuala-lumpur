@@ -1,26 +1,19 @@
-from datetime import datetime, timezone
-from dotenv import load_dotenv
-from pathlib import Path
-import asyncio
+from __future__ import annotations
+
 import json
 import os
 import random
+from datetime import datetime, timezone
+from typing import Any
 
-from fastapi import FastAPI
+import redis
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from openai import OpenAI
 from pydantic import BaseModel
-from redis import Redis
-from sse_starlette.sse import EventSourceResponse
 
-from .warehouse import get_latest_city_metrics, get_city_risk
 from .warehouse_ops import read_warehouse_status, refresh_warehouse
 
-app = FastAPI(
-    title="AI for Kuala Lumpur API",
-    version="0.4.0",
-    description="Real-time AI city intelligence API for Kuala Lumpur.",
-)
+app = FastAPI(title="AI for Kuala Lumpur API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -30,9 +23,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-REDIS_HOST = "localhost"
-REDIS_PORT = 6379
-REDIS_KEY_LATEST = "ai_kl:latest_snapshot"
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+LIVE_SNAPSHOT_KEY = "ai_kl:latest_snapshot"
+DEPLOYMENT_MODE = os.getenv("DEPLOYMENT_MODE", "local_realtime")
+LIVE_GENERATION_ENABLED = os.getenv("LIVE_GENERATION_ENABLED", "true").lower() == "true"
+
+redis_client = redis.Redis.from_url(REDIS_URL, decode_responses=True)
+
+
+class CopilotRequest(BaseModel):
+    question: str
+    snapshot: dict[str, Any] | None = None
+
 
 DISTRICTS = [
     "KLCC",
@@ -42,278 +44,116 @@ DISTRICTS = [
     "Petaling Jaya",
 ]
 
-ENV_PATH = Path(__file__).resolve().parents[1] / ".env"
-load_dotenv(dotenv_path=ENV_PATH)
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "llama3-70b-8192")
-
-llm_client = None
-if OPENAI_API_KEY:
-    llm_client = OpenAI(
-        api_key=OPENAI_API_KEY,
-        base_url=OPENAI_BASE_URL,
-    )
+def now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
-class AIAnalysisRequest(BaseModel):
-    question: str
-    snapshot: dict | None = None
-
-
-def get_redis_client() -> Redis | None:
-    try:
-        client = Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
-        client.ping()
-        return client
-    except Exception:
-        return None
-
-
-def generate_mock_snapshot() -> dict:
+def build_random_snapshot() -> dict[str, Any]:
     district = random.choice(DISTRICTS)
+    traffic_index = random.randint(35, 92)
+    aqi = random.randint(35, 130)
+    temperature_c = round(random.uniform(27.0, 34.5), 1)
+    humidity_pct = random.randint(62, 90)
+    transit_delay_min = random.randint(1, 14)
 
-    traffic_index = random.randint(45, 95)
-    aqi = random.randint(35, 120)
-    temperature = round(random.uniform(27.0, 34.0), 1)
-    humidity = random.randint(60, 92)
-    transit_delay_min = random.randint(1, 12)
+    if traffic_index >= 80:
+        congestion_level = "heavy"
+    elif traffic_index >= 60:
+        congestion_level = "moderate"
+    else:
+        congestion_level = "fluid"
 
-    congestion_level = (
-        "heavy" if traffic_index >= 80 else
-        "moderate" if traffic_index >= 60 else
-        "fluid"
-    )
-
-    air_quality_status = (
-        "unhealthy" if aqi >= 101 else
-        "moderate" if aqi >= 51 else
-        "good"
-    )
+    if aqi >= 101:
+        air_quality_status = "unhealthy"
+    elif aqi >= 51:
+        air_quality_status = "moderate"
+    else:
+        air_quality_status = "good"
 
     return {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": now_iso(),
         "district": district,
         "traffic_index": traffic_index,
         "congestion_level": congestion_level,
         "aqi": aqi,
         "air_quality_status": air_quality_status,
-        "temperature_c": temperature,
-        "humidity_pct": humidity,
+        "temperature_c": temperature_c,
+        "humidity_pct": humidity_pct,
         "transit_delay_min": transit_delay_min,
-        "source": "mock",
+        "producer": "api_live_generator",
     }
 
 
-def get_latest_snapshot() -> dict:
-    redis_client = get_redis_client()
-    if redis_client is not None:
-        try:
-            raw = redis_client.get(REDIS_KEY_LATEST)
-            if raw:
-                payload = json.loads(raw)
-                payload["source"] = "redis-cache"
-                return payload
-        except Exception:
-            pass
-
-    return generate_mock_snapshot()
+def save_snapshot(snapshot: dict[str, Any]) -> None:
+    redis_client.set(LIVE_SNAPSHOT_KEY, json.dumps(snapshot, ensure_ascii=False))
 
 
-def build_ai_analysis(question: str, snapshot: dict | None) -> dict:
-    if not snapshot:
-        return {
-            "answer": "I do not have enough live data yet to provide a grounded analysis.",
-            "severity": "medium",
-            "highlights": [
-                "No live snapshot received.",
-                "Please wait for the stream or refresh the dashboard.",
-            ],
-            "recommended_action": "Reload the live feed and retry the analysis.",
-        }
+def get_latest_snapshot() -> dict[str, Any] | None:
+    raw = redis_client.get(LIVE_SNAPSHOT_KEY)
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return None
 
-    district = snapshot.get("district", "Unknown district")
-    traffic_index = snapshot.get("traffic_index")
-    aqi = snapshot.get("aqi")
-    temperature_c = snapshot.get("temperature_c")
-    humidity_pct = snapshot.get("humidity_pct")
-    transit_delay_min = snapshot.get("transit_delay_min")
 
-    highlights = []
-    severity = "low"
-
-    if traffic_index is not None:
-        if traffic_index >= 80:
-            highlights.append(f"🚗 Heavy congestion detected in {district} ({traffic_index}).")
-            severity = "high"
-        elif traffic_index >= 60:
-            highlights.append(f"🚗 Moderate traffic pressure in {district} ({traffic_index}).")
-            severity = "medium"
-        else:
-            highlights.append(f"🚗 Traffic remains fluid in {district} ({traffic_index}).")
-
-    if aqi is not None:
-        if aqi >= 101:
-            highlights.append(f"🌫 Air quality is unhealthy (AQI {aqi}).")
-            severity = "high"
-        elif aqi >= 51:
-            highlights.append(f"🌿 Air quality is moderate (AQI {aqi}).")
-            if severity == "low":
-                severity = "medium"
-        else:
-            highlights.append(f"🌿 Air quality is good (AQI {aqi}).")
-
-    if temperature_c is not None:
-        if temperature_c >= 33:
-            highlights.append(f"🌡 Urban heat is elevated at {temperature_c}°C.")
-            if severity == "low":
-                severity = "medium"
-        else:
-            highlights.append(f"🌡 Temperature is currently {temperature_c}°C.")
-
-    if humidity_pct is not None:
-        if humidity_pct >= 85:
-            highlights.append(f"💧 Humidity is very high at {humidity_pct}%.")
-            if severity == "low":
-                severity = "medium"
-        else:
-            highlights.append(f"💧 Humidity is {humidity_pct}%.")
-
-    if transit_delay_min is not None:
-        if transit_delay_min >= 10:
-            highlights.append(f"🚇 Transit delays are significant ({transit_delay_min} min).")
-            severity = "high"
-        elif transit_delay_min >= 5:
-            highlights.append(f"🚇 Transit delays are noticeable ({transit_delay_min} min).")
-            if severity == "low":
-                severity = "medium"
-        else:
-            highlights.append(f"🚇 Transit network remains responsive ({transit_delay_min} min delay).")
-
-    normalized_question = question.lower().strip()
-
-    if "summary" in normalized_question or "situation" in normalized_question:
-        answer = (
-            f"Current situation in {district}: traffic, air quality, weather, and transit signals "
-            f"show a {severity} operational pressure profile."
+def get_city_risk() -> list[dict[str, Any]]:
+    db_path = os.path.abspath(
+        os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "..",
+            "..",
+            "warehouse",
+            "duckdb",
+            "data",
+            "ai_kl.duckdb",
         )
-    elif "traffic" in normalized_question:
-        answer = (
-            f"Traffic analysis for {district}: the latest live traffic index is {traffic_index}. "
-            f"This suggests {'heavy congestion' if traffic_index is not None and traffic_index >= 80 else 'moderate pressure' if traffic_index is not None and traffic_index >= 60 else 'fluid movement'}."
-        )
-    elif "air" in normalized_question or "aqi" in normalized_question:
-        answer = (
-            f"Air quality analysis for {district}: the latest AQI is {aqi}. "
-            f"This indicates {'unhealthy air conditions' if aqi is not None and aqi >= 101 else 'moderate air quality' if aqi is not None and aqi >= 51 else 'good air quality'}."
-        )
-    elif "temperature" in normalized_question or "humidity" in normalized_question or "weather" in normalized_question:
-        answer = (
-            f"Weather analysis for {district}: temperature is {temperature_c}°C and humidity is {humidity_pct}%."
-        )
-    elif "recommend" in normalized_question or "action" in normalized_question:
-        answer = (
-            f"Recommended action for {district}: prioritize operational monitoring, especially where road pressure "
-            f"and transit delay are elevated."
-        )
-    else:
-        answer = (
-            f"The latest live snapshot for {district} indicates a {severity} level operational situation."
-        )
-
-    recommended_action = (
-        "Monitor the district closely and prepare escalation if traffic and transit delay continue rising."
-        if severity == "high"
-        else "Continue monitoring and compare with the next live updates."
-        if severity == "medium"
-        else "Situation is stable. No urgent intervention is needed."
     )
 
-    return {
-        "answer": answer,
-        "severity": severity,
-        "highlights": highlights,
-        "recommended_action": recommended_action,
-    }
+    if not os.path.exists(db_path):
+        return []
+
+    try:
+        import duckdb
+
+        conn = duckdb.connect(db_path)
+        rows = conn.execute(
+            """
+            select
+              district,
+              latest_timestamp,
+              avg_traffic_index,
+              avg_aqi,
+              avg_temperature_c,
+              avg_humidity_pct,
+              avg_transit_delay_min,
+              signal_count,
+              city_risk_level
+            from main.mart_city_risk
+            order by district
+            """
+        ).fetchall()
+        columns = [desc[0] for desc in conn.description]
+        conn.close()
+
+        result: list[dict[str, Any]] = []
+        for row in rows:
+          item = dict(zip(columns, row))
+          if item.get("latest_timestamp") is not None:
+              item["latest_timestamp"] = str(item["latest_timestamp"])
+          result.append(item)
+        return result
+    except Exception:
+        return []
 
 
-def analyze_city_data_with_llm(
-    snapshot: dict | None,
-    warehouse_risk: list[dict] | None,
-    question: str,
-) -> dict:
-    if llm_client is None:
-        fallback = build_ai_analysis(question, snapshot)
-        fallback["answer"] = f"{fallback['answer']} (LLM not configured, fallback mode active.)"
-        return fallback
-
-    system_prompt = """
-You are an AI urban operations analyst monitoring Kuala Lumpur.
-
-Your role:
-- analyze real-time city signals
-- analyze warehouse analytics produced by dbt marts
-- summarize the situation clearly
-- identify operational risks
-- recommend concrete actions
-
-Rules:
-- stay concise and actionable
-- be grounded only in the provided data
-- do not invent missing facts
-- structure your answer in plain business language
-"""
-
-    snapshot_json = json.dumps(snapshot, ensure_ascii=False, indent=2, default=str) if snapshot else "None"
-    warehouse_risk_json = json.dumps(warehouse_risk, ensure_ascii=False, indent=2, default=str) if warehouse_risk else "None"
-
-    user_prompt = f"""
-User question:
-{question}
-
-LIVE SNAPSHOT:
-{snapshot_json}
-
-WAREHOUSE ANALYTICS:
-{warehouse_risk_json}
-
-Please provide:
-1. A short situation summary
-2. Main risks
-3. Recommended action
-"""
-
-    completion = llm_client.chat.completions.create(
-        model=OPENAI_MODEL,
-        temperature=0.2,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-    )
-
-    answer = completion.choices[0].message.content or "No answer returned by the LLM."
-
-    severity = "low"
-    joined_text = answer.lower()
-    if any(word in joined_text for word in ["high risk", "severe", "critical", "urgent"]):
-        severity = "high"
-    elif any(word in joined_text for word in ["moderate", "watch", "elevated", "attention"]):
-        severity = "medium"
-
-    return {
-        "answer": answer,
-        "severity": severity,
-        "highlights": [
-            "Live snapshot analyzed by LLM.",
-            "Warehouse marts included in the reasoning.",
-        ],
-        "recommended_action": "Review the generated AI summary and compare it with live and warehouse indicators.",
-    }
-
-def build_live_alerts(snapshot: dict | None, warehouse_risk: list[dict] | None) -> list[dict]:
-    alerts = []
+def build_live_alerts(
+    snapshot: dict[str, Any] | None, warehouse_risk: list[dict[str, Any]] | None
+) -> list[dict[str, Any]]:
+    alerts: list[dict[str, Any]] = []
 
     if snapshot:
         district = snapshot.get("district", "Unknown")
@@ -329,7 +169,7 @@ def build_live_alerts(snapshot: dict | None, warehouse_risk: list[dict] | None) 
                     "severity": "high",
                     "message_en": f"Heavy road congestion detected in {district}.",
                     "message_fr": f"Forte congestion routière détectée à {district}.",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": now_iso(),
                 }
             )
         elif traffic_index >= 60:
@@ -339,7 +179,7 @@ def build_live_alerts(snapshot: dict | None, warehouse_risk: list[dict] | None) 
                     "severity": "medium",
                     "message_en": f"Traffic pressure is rising in {district}.",
                     "message_fr": f"La pression du trafic augmente à {district}.",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": now_iso(),
                 }
             )
 
@@ -350,7 +190,7 @@ def build_live_alerts(snapshot: dict | None, warehouse_risk: list[dict] | None) 
                     "severity": "high",
                     "message_en": f"Air quality is unhealthy in {district}.",
                     "message_fr": f"La qualité de l’air est mauvaise à {district}.",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": now_iso(),
                 }
             )
         elif aqi >= 51:
@@ -360,7 +200,7 @@ def build_live_alerts(snapshot: dict | None, warehouse_risk: list[dict] | None) 
                     "severity": "medium",
                     "message_en": f"Air quality is moderately degraded in {district}.",
                     "message_fr": f"La qualité de l’air est modérément dégradée à {district}.",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": now_iso(),
                 }
             )
 
@@ -371,7 +211,7 @@ def build_live_alerts(snapshot: dict | None, warehouse_risk: list[dict] | None) 
                     "severity": "high",
                     "message_en": f"Significant transit disruption detected ({transit_delay_min} min delay).",
                     "message_fr": f"Perturbation importante des transports détectée ({transit_delay_min} min de retard).",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": now_iso(),
                 }
             )
         elif transit_delay_min >= 5:
@@ -381,7 +221,7 @@ def build_live_alerts(snapshot: dict | None, warehouse_risk: list[dict] | None) 
                     "severity": "medium",
                     "message_en": f"Transit delays are noticeable ({transit_delay_min} min).",
                     "message_fr": f"Les retards de transport deviennent visibles ({transit_delay_min} min).",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": now_iso(),
                 }
             )
 
@@ -392,7 +232,7 @@ def build_live_alerts(snapshot: dict | None, warehouse_risk: list[dict] | None) 
                     "severity": "medium",
                     "message_en": f"Urban heat is elevated in {district}.",
                     "message_fr": f"La chaleur urbaine est élevée à {district}.",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": now_iso(),
                 }
             )
 
@@ -407,7 +247,7 @@ def build_live_alerts(snapshot: dict | None, warehouse_risk: list[dict] | None) 
                         "severity": "high",
                         "message_en": f"Warehouse analytics classify {district} as high risk.",
                         "message_fr": f"Les analytics du warehouse classent {district} en risque élevé.",
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "timestamp": now_iso(),
                     }
                 )
             elif risk == "medium":
@@ -417,7 +257,7 @@ def build_live_alerts(snapshot: dict | None, warehouse_risk: list[dict] | None) 
                         "severity": "medium",
                         "message_en": f"Warehouse analytics classify {district} as medium risk.",
                         "message_fr": f"Les analytics du warehouse classent {district} en risque moyen.",
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "timestamp": now_iso(),
                     }
                 )
 
@@ -428,7 +268,7 @@ def build_live_alerts(snapshot: dict | None, warehouse_risk: list[dict] | None) 
                 "severity": "low",
                 "message_en": "No major operational alert detected.",
                 "message_fr": "Aucune alerte opérationnelle majeure détectée.",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": now_iso(),
             }
         )
 
@@ -437,93 +277,148 @@ def build_live_alerts(snapshot: dict | None, warehouse_risk: list[dict] | None) 
     return alerts
 
 
+def analyze_city_data_with_llm(
+    question: str,
+    snapshot: dict[str, Any] | None,
+    warehouse_risk: list[dict[str, Any]] | None,
+) -> dict[str, Any]:
+    severity = "low"
+    highlights: list[str] = []
+    recommended_action = "Keep monitoring the city signals."
+
+    if snapshot:
+        if snapshot.get("traffic_index", 0) >= 80:
+            severity = "high"
+            highlights.append("Traffic congestion is heavy.")
+        elif snapshot.get("traffic_index", 0) >= 60:
+            severity = "medium"
+            highlights.append("Traffic pressure is elevated.")
+
+        if snapshot.get("aqi", 0) >= 101:
+            severity = "high"
+            highlights.append("Air quality is unhealthy.")
+        elif snapshot.get("aqi", 0) >= 51:
+            if severity != "high":
+                severity = "medium"
+            highlights.append("Air quality is moderately degraded.")
+
+        if snapshot.get("transit_delay_min", 0) >= 10:
+            severity = "high"
+            highlights.append("Transit disruption is significant.")
+        elif snapshot.get("transit_delay_min", 0) >= 5:
+            if severity != "high":
+                severity = "medium"
+            highlights.append("Transit delays are noticeable.")
+
+    if warehouse_risk:
+        if any(str(row.get("city_risk_level", "")).lower() == "high" for row in warehouse_risk):
+            severity = "high"
+            highlights.append("Warehouse analytics confirm at least one high-risk district.")
+
+    if severity == "high":
+        recommended_action = "Escalate city operations monitoring and prioritize the most affected district."
+    elif severity == "medium":
+        recommended_action = "Increase monitoring frequency and prepare targeted interventions."
+    else:
+        recommended_action = "Maintain normal monitoring and continue collecting live signals."
+
+    answer_lines = [
+        f"Question: {question}",
+        "",
+        "Situation summary:",
+    ]
+
+    if snapshot:
+        answer_lines.extend(
+            [
+                f"- District: {snapshot.get('district', '--')}",
+                f"- Traffic index: {snapshot.get('traffic_index', '--')}",
+                f"- AQI: {snapshot.get('aqi', '--')}",
+                f"- Temperature: {snapshot.get('temperature_c', '--')}°C",
+                f"- Humidity: {snapshot.get('humidity_pct', '--')}%",
+                f"- Transit delay: {snapshot.get('transit_delay_min', '--')} min",
+            ]
+        )
+
+    if highlights:
+        answer_lines.append("")
+        answer_lines.append("Main highlights:")
+        answer_lines.extend([f"- {item}" for item in highlights])
+
+    answer_lines.append("")
+    answer_lines.append(f"Recommended action: {recommended_action}")
+
+    return {
+        "answer": "\n".join(answer_lines),
+        "severity": severity,
+        "highlights": highlights,
+        "recommended_action": recommended_action,
+    }
+
+
 @app.get("/health")
-def health() -> dict:
-    redis_client = get_redis_client()
+def health() -> dict[str, Any]:
+    redis_connected = False
+    try:
+        redis_connected = bool(redis_client.ping())
+    except Exception:
+        redis_connected = False
+
     return {
         "status": "ok",
         "service": "ai-for-kuala-lumpur-api",
-        "redis_connected": redis_client is not None,
-        "llm_configured": llm_client is not None,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "redis_connected": redis_connected,
+        "deployment_mode": DEPLOYMENT_MODE,
+        "live_generation_enabled": LIVE_GENERATION_ENABLED,
+        "timestamp": now_iso(),
     }
 
 
 @app.get("/api/live")
-def get_live_data() -> dict:
+def get_live() -> dict[str, Any]:
     snapshot = get_latest_snapshot()
+    if snapshot is None:
+        snapshot = build_random_snapshot()
+        save_snapshot(snapshot)
+
     return {
         "city": "Kuala Lumpur",
-        "mode": "streaming-cache" if snapshot.get("source") == "redis-cache" else "mock-realtime",
+        "mode": "streaming-cache" if DEPLOYMENT_MODE == "local_realtime" else "demo-generated",
         "snapshot": snapshot,
     }
 
 
-async def event_generator():
-    while True:
-        snapshot = get_latest_snapshot()
-        payload = {
-            "city": "Kuala Lumpur",
-            "mode": "streaming-cache" if snapshot.get("source") == "redis-cache" else "mock-realtime",
-            "snapshot": snapshot,
-        }
-        yield {
-            "event": "message",
-            "data": json.dumps(payload),
-        }
-        await asyncio.sleep(2)
-
-
 @app.get("/api/live/stream")
-async def stream_live_data() -> EventSourceResponse:
-    return EventSourceResponse(event_generator())
+def get_live_stream_fallback() -> dict[str, Any]:
+    snapshot = get_latest_snapshot()
+    if snapshot is None:
+        snapshot = build_random_snapshot()
+        save_snapshot(snapshot)
 
-
-@app.post("/api/ai/analyze")
-def analyze_live_data(payload: AIAnalysisRequest) -> dict:
-    result = build_ai_analysis(payload.question, payload.snapshot)
     return {
-        "question": payload.question,
-        "result": result,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "city": "Kuala Lumpur",
+        "mode": "streaming-cache" if DEPLOYMENT_MODE == "local_realtime" else "demo-generated",
+        "snapshot": snapshot,
     }
 
 
-@app.post("/api/ai/copilot")
-def ai_copilot(payload: AIAnalysisRequest) -> dict:
-    snapshot = payload.snapshot
-    warehouse_risk = get_city_risk()
+@app.post("/api/live/generate")
+def generate_live_tick() -> dict[str, Any]:
+    if not LIVE_GENERATION_ENABLED:
+        raise HTTPException(status_code=403, detail="Live generation disabled.")
 
-    result = analyze_city_data_with_llm(
-        snapshot=snapshot,
-        warehouse_risk=warehouse_risk,
-        question=payload.question,
-    )
+    snapshot = build_random_snapshot()
+    save_snapshot(snapshot)
 
     return {
-        "question": payload.question,
-        "analysis": result,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "source": "api-live-generator",
+        "deployment_mode": DEPLOYMENT_MODE,
+        "snapshot": snapshot,
     }
 
-
-@app.get("/api/warehouse/latest")
-def warehouse_latest():
-    return {
-        "source": "duckdb",
-        "data": get_latest_city_metrics(),
-    }
-
-
-@app.get("/api/warehouse/risk")
-def warehouse_risk():
-    return {
-        "source": "duckdb",
-        "data": get_city_risk(),
-    }
 
 @app.get("/api/alerts")
-def get_alerts():
+def get_alerts() -> dict[str, Any]:
     snapshot = get_latest_snapshot()
     warehouse_risk = get_city_risk()
     return {
@@ -531,8 +426,17 @@ def get_alerts():
         "data": build_live_alerts(snapshot, warehouse_risk),
     }
 
+
+@app.get("/api/warehouse/risk")
+def warehouse_risk() -> dict[str, Any]:
+    return {
+        "source": "duckdb",
+        "data": get_city_risk(),
+    }
+
+
 @app.get("/api/warehouse/status")
-def warehouse_status():
+def warehouse_status() -> dict[str, Any]:
     return {
         "source": "warehouse-status-file",
         "data": read_warehouse_status(),
@@ -540,9 +444,27 @@ def warehouse_status():
 
 
 @app.post("/api/warehouse/refresh")
-def warehouse_refresh():
+def warehouse_refresh() -> dict[str, Any]:
     result = refresh_warehouse()
     return {
         "source": "manual-refresh",
         "data": result,
+    }
+
+
+@app.post("/api/ai/copilot")
+def ai_copilot(payload: CopilotRequest) -> dict[str, Any]:
+    warehouse_risk = get_city_risk()
+    snapshot = payload.snapshot or get_latest_snapshot()
+
+    result = analyze_city_data_with_llm(
+        question=payload.question,
+        snapshot=snapshot,
+        warehouse_risk=warehouse_risk,
+    )
+
+    return {
+        "question": payload.question,
+        "analysis": result,
+        "timestamp": now_iso(),
     }

@@ -19,6 +19,7 @@ type LiveSnapshot = {
   humidity_pct: number;
   transit_delay_min: number;
   source?: string;
+  producer?: string;
 };
 
 type LiveApiResponse = {
@@ -53,6 +54,15 @@ type WarehouseStatusResponse = {
     last_error: unknown;
     last_row_count_hint?: string | null;
   };
+};
+
+type HealthResponse = {
+  status: string;
+  service: string;
+  redis_connected: boolean;
+  deployment_mode: string;
+  live_generation_enabled: boolean;
+  timestamp: string;
 };
 
 const API_BASE_URL = "http://localhost:8000";
@@ -246,6 +256,7 @@ export default function LiveDashboardPage() {
   const [warehouseRisk, setWarehouseRisk] = useState<WarehouseRiskRow[]>([]);
   const [warehouseStatus, setWarehouseStatus] =
     useState<WarehouseStatusResponse["data"] | null>(null);
+  const [health, setHealth] = useState<HealthResponse | null>(null);
 
   useEffect(() => {
     let eventSource: EventSource | null = null;
@@ -280,7 +291,7 @@ export default function LiveDashboardPage() {
         const json: WarehouseRiskResponse = await response.json();
         setWarehouseRisk(json.data);
       } catch {
-        // keep silent for now
+        //
       }
     }
 
@@ -297,7 +308,24 @@ export default function LiveDashboardPage() {
         const json: WarehouseStatusResponse = await response.json();
         setWarehouseStatus(json.data);
       } catch {
-        // keep silent
+        //
+      }
+    }
+
+    async function loadHealth() {
+      try {
+        const response = await fetch(`${API_BASE_URL}/health`, {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch health.");
+        }
+
+        const json: HealthResponse = await response.json();
+        setHealth(json);
+      } catch {
+        //
       }
     }
 
@@ -327,6 +355,7 @@ export default function LiveDashboardPage() {
     loadInitialData();
     loadWarehouseRisk();
     loadWarehouseStatus();
+    loadHealth();
     connectStream();
 
     const poll = setInterval(() => {
@@ -337,6 +366,7 @@ export default function LiveDashboardPage() {
     const warehousePoll = setInterval(() => {
       loadWarehouseRisk();
       loadWarehouseStatus();
+      loadHealth();
     }, 10000);
 
     return () => {
@@ -345,6 +375,32 @@ export default function LiveDashboardPage() {
       clearInterval(warehousePoll);
     };
   }, []);
+
+  async function generateLiveTick() {
+  try {
+    const genResponse = await fetch(`${API_BASE_URL}/api/live/generate`, {
+      method: "POST",
+    });
+
+    if (!genResponse.ok) {
+      throw new Error("Failed to generate live snapshot.");
+    }
+
+    const liveResponse = await fetch(`${API_BASE_URL}/api/live`, {
+      cache: "no-store",
+    });
+
+    if (!liveResponse.ok) {
+      throw new Error("Failed to reload live snapshot.");
+    }
+
+    const json: LiveApiResponse = await liveResponse.json();
+    setData(json);
+    setError(null);
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Failed to generate snapshot.");
+  }
+}
 
   const snapshot = data?.snapshot;
 
@@ -464,6 +520,36 @@ export default function LiveDashboardPage() {
                   : "No successful refresh yet"}
               </p>
             </div>
+
+            <div className="pill rounded-3xl px-5 py-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                Deployment mode
+              </p>
+              <p className="mt-2 text-sm font-medium text-white">
+                {health?.deployment_mode ?? "--"}
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                {health?.live_generation_enabled
+                  ? "Live generation enabled"
+                  : "Live generation disabled"}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={generateLiveTick}
+              className="rounded-3xl border border-cyan-300/20 bg-cyan-400/10 px-5 py-4 text-left transition hover:bg-cyan-400/20 active:scale-[0.99]"
+            >
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                Live tick
+              </p>
+              <p className="mt-2 text-sm font-medium text-white">
+                Generate snapshot
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                Demo mode compatible with Vercel
+              </p>
+            </button>
 
             <div className="pill rounded-3xl px-5 py-4 sm:col-span-2">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
@@ -762,6 +848,10 @@ export default function LiveDashboardPage() {
               {
                 label: "Warehouse refresh",
                 value: warehouseStatus?.status ?? "--",
+              },
+              {
+                label: "Deployment mode",
+                value: health?.deployment_mode ?? "--",
               },
             ].map((row) => (
               <div
