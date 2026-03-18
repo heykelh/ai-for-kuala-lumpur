@@ -8,6 +8,8 @@ const KLLiveMap = dynamic(() => import("@/components/kl-live-map"), {
   ssr: false,
 });
 
+type Language = "en" | "fr";
+
 type LiveSnapshot = {
   timestamp: string;
   district: string;
@@ -56,171 +58,167 @@ type WarehouseStatusResponse = {
   };
 };
 
-type HealthResponse = {
-  status: string;
-  service: string;
-  redis_connected: boolean;
-  deployment_mode: string;
-  live_generation_enabled: boolean;
-  timestamp: string;
-};
-
 const API_BASE_URL = "http://localhost:8000";
 
-const mainBars = [72, 56, 68, 49, 65, 73, 45, 61, 58, 79, 86, 74];
-const miniTrafficBars = [35, 62, 48, 41, 75, 91, 67, 44];
-const miniHumidityBars = [50, 54, 40, 66, 82, 72, 52, 60];
-const miniWeatherBars = [74, 61, 45, 38, 50, 59, 42, 68];
+const translations = {
+  en: {
+    pageTag: "Live command center",
+    pageTitle: "Kuala Lumpur Real-Time Overview",
+    pageSubtitle:
+      "Monitor live city signals, multi-district metrics, warehouse analytics, and interact with the AI copilot in one place.",
+    langButton: "FR / EN",
+    currentTime: "Kuala Lumpur time",
+    mode: "Mode",
+    localRealtime: "Local realtime",
+    demoMode: "Demo mode",
+    warehouse: "Warehouse",
+    warehouseReady: "Ready",
+    warehouseError: "Error",
+    noWarehouseSuccess: "No successful refresh yet",
+    generateSnapshot: "Generate snapshot",
+    generateSnapshotHint: "Create a new live district focus",
+    refreshWarehouse: "Refresh warehouse",
+    refreshWarehouseHint: "Reload DuckDB + dbt analytics",
+    districtOverview: "District overview",
+    districtOverviewSub: "All monitored zones",
+    currentFocus: "Current focus",
+    currentFocusSub: "Live district spotlight",
+    mapTitle: "Kuala Lumpur live map",
+    mapSub: "Geospatial overview",
+    warehouseTitle: "Warehouse analytics",
+    warehouseSub: "dbt marts and risk signals",
+    traffic: "Traffic",
+    air: "Air quality",
+    temperature: "Temperature",
+    humidity: "Humidity",
+    transit: "Transit delay",
+    signals: "Signals",
+    recommendation: "Recommendation",
+    riskLevel: "Risk level",
+    liveSnapshot: "Live snapshot",
+    lastUpdate: "Last update",
+    district: "District",
+    noData: "No data",
+    loading: "Loading...",
+    refreshing: "Refreshing...",
+    focusRecommendationHigh:
+      "Escalate monitoring and prioritize mobility mitigation in this district.",
+    focusRecommendationMedium:
+      "Increase monitoring cadence and prepare localized interventions.",
+    focusRecommendationLow:
+      "Maintain normal monitoring and continue collecting signals.",
+    districtRecommendationHigh:
+      "High-risk district. Prioritize active monitoring and rapid coordination.",
+    districtRecommendationMedium:
+      "Medium-risk district. Watch closely and prepare targeted action.",
+    districtRecommendationLow:
+      "Lower-risk district. Continue routine monitoring.",
+  },
+  fr: {
+    pageTag: "Centre de commandement live",
+    pageTitle: "Vue temps réel de Kuala Lumpur",
+    pageSubtitle:
+      "Surveille les signaux live de la ville, les métriques multi-districts, les analytics warehouse et interagis avec l’AI copilot au même endroit.",
+    langButton: "FR / EN",
+    currentTime: "Heure de Kuala Lumpur",
+    mode: "Mode",
+    localRealtime: "Temps réel local",
+    demoMode: "Mode démo",
+    warehouse: "Warehouse",
+    warehouseReady: "Prêt",
+    warehouseError: "Erreur",
+    noWarehouseSuccess: "Aucun refresh réussi pour le moment",
+    generateSnapshot: "Générer un snapshot",
+    generateSnapshotHint: "Créer un nouveau focus district live",
+    refreshWarehouse: "Rafraîchir le warehouse",
+    refreshWarehouseHint: "Recharger DuckDB + analytics dbt",
+    districtOverview: "Vue d’ensemble des districts",
+    districtOverviewSub: "Toutes les zones surveillées",
+    currentFocus: "Focus actuel",
+    currentFocusSub: "District live mis en avant",
+    mapTitle: "Carte live de Kuala Lumpur",
+    mapSub: "Vue géospatiale",
+    warehouseTitle: "Analytics warehouse",
+    warehouseSub: "Marts dbt et signaux de risque",
+    traffic: "Trafic",
+    air: "Qualité de l’air",
+    temperature: "Température",
+    humidity: "Humidité",
+    transit: "Retard transport",
+    signals: "Signaux",
+    recommendation: "Recommandation",
+    riskLevel: "Niveau de risque",
+    liveSnapshot: "Snapshot live",
+    lastUpdate: "Dernière mise à jour",
+    district: "District",
+    noData: "Aucune donnée",
+    loading: "Chargement...",
+    refreshing: "Rafraîchissement...",
+    focusRecommendationHigh:
+      "Escalader la surveillance et prioriser les actions mobilité sur ce district.",
+    focusRecommendationMedium:
+      "Augmenter la fréquence de monitoring et préparer des interventions locales.",
+    focusRecommendationLow:
+      "Maintenir une surveillance normale et continuer la collecte des signaux.",
+    districtRecommendationHigh:
+      "District à risque élevé. Prioriser un monitoring actif et une coordination rapide.",
+    districtRecommendationMedium:
+      "District à risque moyen. Surveiller de près et préparer une action ciblée.",
+    districtRecommendationLow:
+      "District à risque plus faible. Continuer la surveillance habituelle.",
+  },
+};
 
-function getTrafficFeedback(value?: number) {
-  if (value === undefined) {
-    return { text: "Waiting for live traffic feed.", tone: "feedback-medium" };
-  }
-  if (value >= 80) {
-    return {
-      text: "🚨 Heavy congestion detected. Road pressure is high.",
-      tone: "feedback-bad",
-    };
-  }
-  if (value >= 60) {
-    return {
-      text: "⚠️ Traffic is elevated but still manageable.",
-      tone: "feedback-medium",
-    };
-  }
-  return {
-    text: "✅ Traffic is fluid across the monitored zone.",
-    tone: "feedback-good",
-  };
+function getTrafficTone(value?: number) {
+  if (value === undefined) return "text-slate-300";
+  if (value >= 80) return "text-red-300";
+  if (value >= 60) return "text-amber-300";
+  return "text-emerald-300";
 }
 
-function getAirFeedback(value?: number) {
-  if (value === undefined) {
-    return {
-      text: "Waiting for live air quality feed.",
-      tone: "feedback-medium",
-    };
-  }
-  if (value >= 101) {
-    return {
-      text: "😷 Air quality is unhealthy. Outdoor exposure should be limited.",
-      tone: "feedback-bad",
-    };
-  }
-  if (value >= 51) {
-    return {
-      text: "🌤️ Air quality is moderate. Acceptable with some caution.",
-      tone: "feedback-medium",
-    };
-  }
-  return {
-    text: "🌿 Air quality is good and stable.",
-    tone: "feedback-good",
-  };
+function getRiskTone(risk?: string) {
+  const normalized = String(risk || "").toLowerCase();
+  if (normalized === "high") return "border-red-400/20 bg-red-500/10 text-red-200";
+  if (normalized === "medium")
+    return "border-amber-400/20 bg-amber-500/10 text-amber-200";
+  return "border-emerald-400/20 bg-emerald-500/10 text-emerald-200";
 }
 
-function getTempFeedback(value?: number) {
-  if (value === undefined) {
-    return { text: "Waiting for temperature data.", tone: "feedback-medium" };
-  }
-  if (value >= 33) {
-    return {
-      text: "🔥 Heat is intense. Expect higher urban stress.",
-      tone: "feedback-bad",
-    };
-  }
-  if (value >= 29) {
-    return {
-      text: "☀️ Warm city conditions, typical for Kuala Lumpur.",
-      tone: "feedback-medium",
-    };
-  }
-  return {
-    text: "🌤️ Temperature is comfortable for city operations.",
-    tone: "feedback-good",
-  };
+function getFocusRecommendation(
+  risk: string | undefined,
+  t: (typeof translations)["en"]
+) {
+  const normalized = String(risk || "").toLowerCase();
+  if (normalized === "high") return t.focusRecommendationHigh;
+  if (normalized === "medium") return t.focusRecommendationMedium;
+  return t.focusRecommendationLow;
 }
 
-function getHumidityFeedback(value?: number) {
-  if (value === undefined) {
-    return { text: "Waiting for humidity data.", tone: "feedback-medium" };
-  }
-  if (value >= 85) {
-    return {
-      text: "💧 Humidity is very high. Air will feel heavy.",
-      tone: "feedback-bad",
-    };
-  }
-  if (value >= 70) {
-    return {
-      text: "🌫️ Humidity is noticeable but within expected range.",
-      tone: "feedback-medium",
-    };
-  }
-  return {
-    text: "🍃 Humidity is relatively comfortable.",
-    tone: "feedback-good",
-  };
+function getDistrictRecommendation(
+  risk: string | undefined,
+  t: (typeof translations)["en"]
+) {
+  const normalized = String(risk || "").toLowerCase();
+  if (normalized === "high") return t.districtRecommendationHigh;
+  if (normalized === "medium") return t.districtRecommendationMedium;
+  return t.districtRecommendationLow;
 }
 
-function getTransitFeedback(value?: number) {
-  if (value === undefined) {
-    return {
-      text: "Waiting for transit delay feed.",
-      tone: "feedback-medium",
-    };
-  }
-  if (value >= 10) {
-    return {
-      text: "🚦 Transit delays are significant right now.",
-      tone: "feedback-bad",
-    };
-  }
-  if (value >= 5) {
-    return {
-      text: "🚌 Minor disruptions are visible in the network.",
-      tone: "feedback-medium",
-    };
-  }
-  return {
-    text: "✅ Transit flow is healthy and responsive.",
-    tone: "feedback-good",
-  };
+function formatNumber(value?: number, suffix = "") {
+  if (value === undefined || value === null || Number.isNaN(value)) return "--";
+  return `${Number(value).toFixed(1)}${suffix}`;
 }
 
-function MetricCard({
-  icon,
-  title,
-  value,
-  helper,
-  feedback,
-  feedbackTone,
-  glow = "metric-glow-cyan",
-}: {
-  icon: string;
-  title: string;
-  value: string;
-  helper: string;
-  feedback: string;
-  feedbackTone: string;
-  glow?: string;
-}) {
-  return (
-    <div className={`glass-card ${glow} rounded-[28px] p-5`}>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm text-slate-400">{title}</p>
-          <p className="kpi-value mt-3 text-3xl font-bold text-white">{value}</p>
-        </div>
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-2xl">
-          {icon}
-        </div>
-      </div>
-
-      <p className="mt-2 text-sm text-slate-400">{helper}</p>
-      <p className={`mt-3 text-sm leading-6 ${feedbackTone}`}>{feedback}</p>
-    </div>
-  );
+function formatLocalTimeInKL(date: Date, language: Language) {
+  return new Intl.DateTimeFormat(language === "fr" ? "fr-FR" : "en-GB", {
+    timeZone: "Asia/Kuala_Lumpur",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
 }
 
 function SectionCard({
@@ -234,15 +232,13 @@ function SectionCard({
 }) {
   return (
     <section className="glass-card soft-glow rounded-[30px] p-6">
-      <div className="mb-5 flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-cyan-300/90">
-            {subtitle}
-          </p>
-          <h2 className="heading-font mt-2 text-xl font-semibold text-white">
-            {title}
-          </h2>
-        </div>
+      <div className="mb-5">
+        <p className="text-xs uppercase tracking-[0.2em] text-cyan-300/90">
+          {subtitle}
+        </p>
+        <h2 className="heading-font mt-2 text-xl font-semibold text-white">
+          {title}
+        </h2>
       </div>
       {children}
     </section>
@@ -250,345 +246,337 @@ function SectionCard({
 }
 
 export default function LiveDashboardPage() {
+  const [language, setLanguage] = useState<Language>("en");
   const [data, setData] = useState<LiveApiResponse | null>(null);
-  const [connected, setConnected] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [warehouseRisk, setWarehouseRisk] = useState<WarehouseRiskRow[]>([]);
   const [warehouseStatus, setWarehouseStatus] =
     useState<WarehouseStatusResponse["data"] | null>(null);
-  const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState<string>("");
+  const [generating, setGenerating] = useState(false);
+  const [refreshingWarehouse, setRefreshingWarehouse] = useState(false);
+
+  const t = translations[language];
 
   useEffect(() => {
-    let eventSource: EventSource | null = null;
+    const tick = () => {
+      setCurrentTime(formatLocalTimeInKL(new Date(), language));
+    };
 
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [language]);
+
+  useEffect(() => {
     async function loadInitialData() {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/live`, {
-          cache: "no-store",
-        });
+        const [liveRes, riskRes, statusRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/live`, { cache: "no-store" }),
+          fetch(`${API_BASE_URL}/api/warehouse/risk`, { cache: "no-store" }),
+          fetch(`${API_BASE_URL}/api/warehouse/status`, { cache: "no-store" }),
+        ]);
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch initial live data.");
+        if (!liveRes.ok) {
+          throw new Error("Failed to fetch live data.");
         }
 
-        const json: LiveApiResponse = await response.json();
-        setData(json);
+        const liveJson: LiveApiResponse = await liveRes.json();
+        setData(liveJson);
+
+        if (riskRes.ok) {
+          const riskJson: WarehouseRiskResponse = await riskRes.json();
+          setWarehouseRisk(riskJson.data ?? []);
+        }
+
+        if (statusRes.ok) {
+          const statusJson: WarehouseStatusResponse = await statusRes.json();
+          setWarehouseStatus(statusJson.data);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       }
     }
 
-    async function loadWarehouseRisk() {
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/warehouse/risk`, {
-          cache: "no-store",
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch warehouse risk.");
-        }
-
-        const json: WarehouseRiskResponse = await response.json();
-        setWarehouseRisk(json.data);
-      } catch {
-        //
-      }
-    }
-
-    async function loadWarehouseStatus() {
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/warehouse/status`, {
-          cache: "no-store",
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch warehouse status.");
-        }
-
-        const json: WarehouseStatusResponse = await response.json();
-        setWarehouseStatus(json.data);
-      } catch {
-        //
-      }
-    }
-
-    async function loadHealth() {
-      try {
-        const response = await fetch(`${API_BASE_URL}/health`, {
-          cache: "no-store",
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch health.");
-        }
-
-        const json: HealthResponse = await response.json();
-        setHealth(json);
-      } catch {
-        //
-      }
-    }
-
-    function connectStream() {
-      eventSource = new EventSource(`${API_BASE_URL}/api/live/stream`);
-
-      eventSource.onopen = () => {
-        setConnected(true);
-        setError(null);
-      };
-
-      eventSource.onerror = () => {
-        setConnected(false);
-        setError("Live stream disconnected.");
-      };
-
-      eventSource.onmessage = (event) => {
-        try {
-          const parsed: LiveApiResponse = JSON.parse(event.data);
-          setData(parsed);
-        } catch {
-          setError("Failed to parse live stream payload.");
-        }
-      };
-    }
-
     loadInitialData();
-    loadWarehouseRisk();
-    loadWarehouseStatus();
-    loadHealth();
-    connectStream();
-
-    const poll = setInterval(() => {
-      loadInitialData();
-      loadWarehouseStatus();
-    }, 3000);
-
-    const warehousePoll = setInterval(() => {
-      loadWarehouseRisk();
-      loadWarehouseStatus();
-      loadHealth();
-    }, 10000);
-
-    return () => {
-      eventSource?.close();
-      clearInterval(poll);
-      clearInterval(warehousePoll);
-    };
   }, []);
 
-  async function generateLiveTick() {
-  try {
-    const genResponse = await fetch(`${API_BASE_URL}/api/live/generate`, {
-      method: "POST",
-    });
+  async function reloadLiveAndWarehouseStatus() {
+    try {
+      const [liveRes, riskRes, statusRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/live`, { cache: "no-store" }),
+        fetch(`${API_BASE_URL}/api/warehouse/risk`, { cache: "no-store" }),
+        fetch(`${API_BASE_URL}/api/warehouse/status`, { cache: "no-store" }),
+      ]);
 
-    if (!genResponse.ok) {
-      throw new Error("Failed to generate live snapshot.");
+      if (liveRes.ok) {
+        const liveJson: LiveApiResponse = await liveRes.json();
+        setData(liveJson);
+      }
+
+      if (riskRes.ok) {
+        const riskJson: WarehouseRiskResponse = await riskRes.json();
+        setWarehouseRisk(riskJson.data ?? []);
+      }
+
+      if (statusRes.ok) {
+        const statusJson: WarehouseStatusResponse = await statusRes.json();
+        setWarehouseStatus(statusJson.data);
+      }
+    } catch {
+      // silent refresh
     }
-
-    const liveResponse = await fetch(`${API_BASE_URL}/api/live`, {
-      cache: "no-store",
-    });
-
-    if (!liveResponse.ok) {
-      throw new Error("Failed to reload live snapshot.");
-    }
-
-    const json: LiveApiResponse = await liveResponse.json();
-    setData(json);
-    setError(null);
-  } catch (err) {
-    setError(err instanceof Error ? err.message : "Failed to generate snapshot.");
   }
-}
+
+  async function generateLiveTick() {
+    try {
+      setGenerating(true);
+      setError(null);
+
+      const genResponse = await fetch(`${API_BASE_URL}/api/live/generate`, {
+        method: "POST",
+      });
+
+      if (!genResponse.ok) {
+        throw new Error("Failed to generate live snapshot.");
+      }
+
+      await reloadLiveAndWarehouseStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to generate snapshot.");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function refreshWarehouse() {
+    try {
+      setRefreshingWarehouse(true);
+      setError(null);
+
+      const response = await fetch(`${API_BASE_URL}/api/warehouse/refresh`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to refresh warehouse.");
+      }
+
+      await reloadLiveAndWarehouseStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to refresh warehouse.");
+    } finally {
+      setRefreshingWarehouse(false);
+    }
+  }
 
   const snapshot = data?.snapshot;
 
   const updatedAt = useMemo(() => {
     if (!snapshot?.timestamp) return "--";
-    return new Date(snapshot.timestamp).toLocaleString();
-  }, [snapshot?.timestamp]);
+    return new Intl.DateTimeFormat(language === "fr" ? "fr-FR" : "en-GB", {
+      dateStyle: "short",
+      timeStyle: "medium",
+    }).format(new Date(snapshot.timestamp));
+  }, [snapshot?.timestamp, language]);
 
-  const trafficFeedback = getTrafficFeedback(snapshot?.traffic_index);
-  const airFeedback = getAirFeedback(snapshot?.aqi);
-  const tempFeedback = getTempFeedback(snapshot?.temperature_c);
-  const humidityFeedback = getHumidityFeedback(snapshot?.humidity_pct);
-  const transitFeedback = getTransitFeedback(snapshot?.transit_delay_min);
+  const liveDistrictMap = useMemo(() => {
+    const base = [
+      {
+        name: "KLCC",
+        lat: 3.1579,
+        lng: 101.7116,
+        trafficIndex: 82,
+        aqi: 58,
+        temperature: 31,
+        humidity: 78,
+      },
+      {
+        name: "Bukit Bintang",
+        lat: 3.1467,
+        lng: 101.7133,
+        trafficIndex: 76,
+        aqi: 64,
+        temperature: 32,
+        humidity: 80,
+      },
+      {
+        name: "Bangsar",
+        lat: 3.1292,
+        lng: 101.6788,
+        trafficIndex: 61,
+        aqi: 49,
+        temperature: 30,
+        humidity: 74,
+      },
+      {
+        name: "Mont Kiara",
+        lat: 3.1698,
+        lng: 101.6527,
+        trafficIndex: 57,
+        aqi: 46,
+        temperature: 29,
+        humidity: 72,
+      },
+      {
+        name: "Petaling Jaya",
+        lat: 3.1073,
+        lng: 101.6067,
+        trafficIndex: 69,
+        aqi: 54,
+        temperature: 30,
+        humidity: 76,
+      },
+    ];
 
-  const mapPoints = [
-    {
-      name: "KLCC",
-      lat: 3.1579,
-      lng: 101.7116,
-      trafficIndex: snapshot?.district === "KLCC" ? snapshot.traffic_index : 82,
-      aqi: snapshot?.district === "KLCC" ? snapshot.aqi : 58,
-      temperature: snapshot?.district === "KLCC" ? snapshot.temperature_c : 31,
-      humidity: snapshot?.district === "KLCC" ? snapshot.humidity_pct : 78,
-    },
-    {
-      name: "Bukit Bintang",
-      lat: 3.1467,
-      lng: 101.7133,
-      trafficIndex:
-        snapshot?.district === "Bukit Bintang" ? snapshot.traffic_index : 76,
-      aqi: snapshot?.district === "Bukit Bintang" ? snapshot.aqi : 64,
-      temperature:
-        snapshot?.district === "Bukit Bintang" ? snapshot.temperature_c : 32,
-      humidity:
-        snapshot?.district === "Bukit Bintang" ? snapshot.humidity_pct : 80,
-    },
-    {
-      name: "Bangsar",
-      lat: 3.1292,
-      lng: 101.6788,
-      trafficIndex: snapshot?.district === "Bangsar" ? snapshot.traffic_index : 61,
-      aqi: snapshot?.district === "Bangsar" ? snapshot.aqi : 49,
-      temperature: snapshot?.district === "Bangsar" ? snapshot.temperature_c : 30,
-      humidity: snapshot?.district === "Bangsar" ? snapshot.humidity_pct : 74,
-    },
-    {
-      name: "Mont Kiara",
-      lat: 3.1698,
-      lng: 101.6527,
-      trafficIndex:
-        snapshot?.district === "Mont Kiara" ? snapshot.traffic_index : 57,
-      aqi: snapshot?.district === "Mont Kiara" ? snapshot.aqi : 46,
-      temperature:
-        snapshot?.district === "Mont Kiara" ? snapshot.temperature_c : 29,
-      humidity:
-        snapshot?.district === "Mont Kiara" ? snapshot.humidity_pct : 72,
-    },
-    {
-      name: "Petaling Jaya",
-      lat: 3.1073,
-      lng: 101.6067,
-      trafficIndex:
-        snapshot?.district === "Petaling Jaya" ? snapshot.traffic_index : 69,
-      aqi: snapshot?.district === "Petaling Jaya" ? snapshot.aqi : 54,
-      temperature:
-        snapshot?.district === "Petaling Jaya" ? snapshot.temperature_c : 30,
-      humidity:
-        snapshot?.district === "Petaling Jaya" ? snapshot.humidity_pct : 76,
-    },
-  ];
+    return base.map((item) => {
+      if (snapshot?.district === item.name) {
+        return {
+          ...item,
+          trafficIndex: snapshot.traffic_index,
+          aqi: snapshot.aqi,
+          temperature: snapshot.temperature_c,
+          humidity: snapshot.humidity_pct,
+        };
+      }
+      return item;
+    });
+  }, [snapshot]);
+
+  const districtCards = useMemo(() => {
+    return liveDistrictMap.map((district) => {
+      const warehouseRow = warehouseRisk.find((row) => row.district === district.name);
+
+      return {
+        district: district.name,
+        traffic: warehouseRow
+          ? Number(warehouseRow.avg_traffic_index)
+          : district.trafficIndex,
+        aqi: warehouseRow ? Number(warehouseRow.avg_aqi) : district.aqi,
+        temperature: warehouseRow
+          ? Number(warehouseRow.avg_temperature_c)
+          : district.temperature,
+        humidity: warehouseRow
+          ? Number(warehouseRow.avg_humidity_pct)
+          : district.humidity,
+        transit: warehouseRow
+          ? Number(warehouseRow.avg_transit_delay_min)
+          : snapshot?.district === district.name
+          ? snapshot.transit_delay_min
+          : undefined,
+        risk: warehouseRow?.city_risk_level ?? "low",
+        signals: warehouseRow?.signal_count ?? 0,
+      };
+    });
+  }, [liveDistrictMap, warehouseRisk, snapshot]);
+
+  const focusWarehouse = useMemo(() => {
+    if (!snapshot?.district) return null;
+    return warehouseRisk.find((row) => row.district === snapshot.district) ?? null;
+  }, [snapshot?.district, warehouseRisk]);
+
+  const deploymentModeLabel =
+    data?.mode === "streaming-cache" ? t.localRealtime : t.demoMode;
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6">
       <section className="glass-card soft-glow rounded-[34px] p-6 sm:p-8">
-        <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
           <div className="max-w-3xl">
             <p className="text-xs uppercase tracking-[0.26em] text-cyan-300/90">
-              Live command center
+              {t.pageTag}
             </p>
             <h1 className="heading-font mt-3 text-3xl font-bold tracking-tight text-white sm:text-5xl">
-              Kuala Lumpur Real-Time Operations
+              {t.pageTitle}
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300">
-              A cleaner and more urban visual style for monitoring city traffic,
-              temperature, humidity, transit conditions, environmental signals,
-              and analytics warehouse insights in one place.
+              {t.pageSubtitle}
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="pill rounded-3xl px-5 py-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                Stream status
-              </p>
-              <div className="mt-2 flex items-center gap-2 text-white">
-                <span
-                  className={`status-dot ${
-                    connected ? "status-online" : "status-offline"
-                  }`}
-                />
-                <span className="font-medium">
-                  {connected ? "Connected" : "Offline"}
-                </span>
+          <div className="flex flex-col gap-3 sm:min-w-[320px]">
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setLanguage((prev) => (prev === "en" ? "fr" : "en"))}
+                className="rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-2 text-sm font-medium text-white transition hover:bg-white/[0.08]"
+              >
+                {t.langButton}
+              </button>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="pill rounded-3xl px-5 py-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  {t.currentTime}
+                </p>
+                <p className="mt-2 text-sm font-medium text-white">{currentTime}</p>
+              </div>
+
+              <div className="pill rounded-3xl px-5 py-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  {t.mode}
+                </p>
+                <p className="mt-2 text-sm font-medium text-white">
+                  {deploymentModeLabel}
+                </p>
+              </div>
+
+              <div className="pill rounded-3xl px-5 py-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  {t.warehouse}
+                </p>
+                <p className="mt-2 text-sm font-medium text-white">
+                  {warehouseStatus?.status === "ok" ? t.warehouseReady : t.warehouseError}
+                </p>
+                <p className="mt-1 text-xs text-slate-400">
+                  {warehouseStatus?.last_success_at
+                    ? new Intl.DateTimeFormat(language === "fr" ? "fr-FR" : "en-GB", {
+                        dateStyle: "short",
+                        timeStyle: "medium",
+                      }).format(new Date(warehouseStatus.last_success_at))
+                    : t.noWarehouseSuccess}
+                </p>
+              </div>
+
+              <div className="pill rounded-3xl px-5 py-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  {t.lastUpdate}
+                </p>
+                <p className="mt-2 text-sm font-medium text-white">{updatedAt}</p>
               </div>
             </div>
 
-            <div className="pill rounded-3xl px-5 py-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                Warehouse
-              </p>
-              <p className="mt-2 text-sm font-medium text-white">
-                {warehouseStatus?.status ?? "--"}
-              </p>
-              <p className="mt-1 text-xs text-slate-400">
-                {warehouseStatus?.last_success_at
-                  ? new Date(warehouseStatus.last_success_at).toLocaleString()
-                  : "No successful refresh yet"}
-              </p>
-            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={generateLiveTick}
+                disabled={generating}
+                className="rounded-3xl border border-cyan-300/20 bg-cyan-400/10 px-5 py-4 text-left transition hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  {t.generateSnapshot}
+                </p>
+                <p className="mt-2 text-sm font-medium text-white">
+                  {generating ? t.loading : t.generateSnapshotHint}
+                </p>
+              </button>
 
-            <div className="pill rounded-3xl px-5 py-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                Deployment mode
-              </p>
-              <p className="mt-2 text-sm font-medium text-white">
-                {health?.deployment_mode ?? "--"}
-              </p>
-              <p className="mt-1 text-xs text-slate-400">
-                {health?.live_generation_enabled
-                  ? "Live generation enabled"
-                  : "Live generation disabled"}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={generateLiveTick}
-              className="rounded-3xl border border-cyan-300/20 bg-cyan-400/10 px-5 py-4 text-left transition hover:bg-cyan-400/20 active:scale-[0.99]"
-            >
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                Live tick
-              </p>
-              <p className="mt-2 text-sm font-medium text-white">
-                Generate snapshot
-              </p>
-              <p className="mt-1 text-xs text-slate-400">
-                Demo mode compatible with Vercel
-              </p>
-            </button>
-
-            <div className="pill rounded-3xl px-5 py-4 sm:col-span-2">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                Last update
-              </p>
-              <p className="mt-2 text-sm font-medium text-white">{updatedAt}</p>
+              <button
+                type="button"
+                onClick={refreshWarehouse}
+                disabled={refreshingWarehouse}
+                className="rounded-3xl border border-emerald-300/20 bg-emerald-400/10 px-5 py-4 text-left transition hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  {t.refreshWarehouse}
+                </p>
+                <p className="mt-2 text-sm font-medium text-white">
+                  {refreshingWarehouse ? t.refreshing : t.refreshWarehouseHint}
+                </p>
+              </button>
             </div>
           </div>
-        </div>
-
-        <div className="mb-6 h-[2px] w-full rounded-full gradient-line" />
-
-        <div className="chart-bars">
-          {mainBars.map((height, index) => (
-            <div
-              key={`${height}-${index}`}
-              className="chart-bar"
-              style={{ height: `${height}%` }}
-            />
-          ))}
-        </div>
-
-        <div className="mt-4 grid grid-cols-6 gap-2 text-center text-[11px] uppercase tracking-[0.18em] text-slate-500 sm:grid-cols-12">
-          {[
-            "Jan",
-            "Feb",
-            "Mar",
-            "Apr",
-            "May",
-            "Jun",
-            "Jul",
-            "Aug",
-            "Sep",
-            "Oct",
-            "Nov",
-            "Dec",
-          ].map((month) => (
-            <span key={month}>{month}</span>
-          ))}
         </div>
       </section>
 
@@ -598,275 +586,223 @@ export default function LiveDashboardPage() {
         </div>
       )}
 
-      <section className="grid gap-5 xl:grid-cols-4">
-        <MetricCard
-          icon="🚗"
-          title="Traffic Index"
-          value={snapshot?.traffic_index?.toString() ?? "--"}
-          helper={snapshot?.congestion_level ?? "No live label"}
-          feedback={trafficFeedback.text}
-          feedbackTone={trafficFeedback.tone}
-          glow="metric-glow-cyan"
-        />
-
-        <MetricCard
-          icon="🌿"
-          title="Air Quality Index"
-          value={snapshot?.aqi?.toString() ?? "--"}
-          helper={snapshot?.air_quality_status ?? "No AQ label"}
-          feedback={airFeedback.text}
-          feedbackTone={airFeedback.tone}
-          glow="metric-glow-teal"
-        />
-
-        <MetricCard
-          icon="🌡️"
-          title="Temperature"
-          value={
-            snapshot?.temperature_c !== undefined
-              ? `${snapshot.temperature_c}°C`
-              : "--"
-          }
-          helper="Current urban temperature"
-          feedback={tempFeedback.text}
-          feedbackTone={tempFeedback.tone}
-          glow="metric-glow-amber"
-        />
-
-        <MetricCard
-          icon="💧"
-          title="Humidity"
-          value={
-            snapshot?.humidity_pct !== undefined
-              ? `${snapshot.humidity_pct}%`
-              : "--"
-          }
-          helper="Atmospheric moisture"
-          feedback={humidityFeedback.text}
-          feedbackTone={humidityFeedback.tone}
-          glow="metric-glow-teal"
-        />
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[1.7fr_1fr]">
-        <SectionCard
-          title="City live overview"
-          subtitle="District / transit / weather"
-        >
-          <div className="grid gap-5 md:grid-cols-3">
-            <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-slate-400">🏙️ Current district</p>
-                <span className="text-xl">📍</span>
-              </div>
-              <p className="heading-font mt-3 text-3xl font-bold text-white">
-                {snapshot?.district ?? "--"}
-              </p>
-              <p className="mt-3 text-sm leading-6 text-slate-300">
-                Live operational focus zone currently monitored by the platform.
-              </p>
-              <div className="mini-bars mt-5">
-                {miniTrafficBars.map((value, index) => (
-                  <div
-                    key={index}
-                    className="mini-bar-cyan"
-                    style={{ height: `${value}%` }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-slate-400">🚌 Transit delay</p>
-                <span className="text-xl">🚦</span>
-              </div>
-              <p className="heading-font mt-3 text-3xl font-bold text-white">
-                {snapshot?.transit_delay_min !== undefined
-                  ? `${snapshot.transit_delay_min} min`
-                  : "--"}
-              </p>
-              <p className={`mt-3 text-sm leading-6 ${transitFeedback.tone}`}>
-                {transitFeedback.text}
-              </p>
-              <div className="mini-bars mt-5">
-                {miniHumidityBars.map((value, index) => (
-                  <div
-                    key={index}
-                    className="mini-bar-amber"
-                    style={{ height: `${value}%` }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-slate-400">☁️ Pipeline mode</p>
-                <span className="text-xl">📡</span>
-              </div>
-              <p className="heading-font mt-3 text-3xl font-bold text-white">
-                {data?.mode ?? "--"}
-              </p>
-              <p className="mt-3 text-sm leading-6 text-slate-300">
-                Live serving is active and connected to the analytics stack.
-              </p>
-              <div className="mini-bars mt-5">
-                {miniWeatherBars.map((value, index) => (
-                  <div
-                    key={index}
-                    className="mini-bar-teal"
-                    style={{ height: `${value}%` }}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Quick situation summary" subtitle="AI-style feedback">
-          <div className="space-y-4">
-            <div className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-slate-300">
-              🚗 <span className={trafficFeedback.tone}>{trafficFeedback.text}</span>
-            </div>
-            <div className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-slate-300">
-              🌿 <span className={airFeedback.tone}>{airFeedback.text}</span>
-            </div>
-            <div className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-slate-300">
-              🌡️ <span className={tempFeedback.tone}>{tempFeedback.text}</span>
-            </div>
-            <div className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-slate-300">
-              💧 <span className={humidityFeedback.tone}>{humidityFeedback.text}</span>
-            </div>
-          </div>
-        </SectionCard>
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
-        <SectionCard title="Kuala Lumpur live map" subtitle="Geospatial operations">
-          <KLLiveMap points={mapPoints} />
-        </SectionCard>
-
-        <SectionCard title="Map legend" subtitle="Traffic levels">
-          <div className="space-y-4">
-            <div className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-slate-300">
-              <div className="mb-2 flex items-center gap-3">
-                <span className="inline-block h-3 w-3 rounded-full bg-[#22c7a9]" />
-                <span className="font-medium text-white">Fluid traffic</span>
-              </div>
-              Road conditions are smooth and operationally comfortable.
-            </div>
-
-            <div className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-slate-300">
-              <div className="mb-2 flex items-center gap-3">
-                <span className="inline-block h-3 w-3 rounded-full bg-[#f5b942]" />
-                <span className="font-medium text-white">Moderate pressure</span>
-              </div>
-              Increased traffic density with manageable delays.
-            </div>
-
-            <div className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-slate-300">
-              <div className="mb-2 flex items-center gap-3">
-                <span className="inline-block h-3 w-3 rounded-full bg-[#ff6b6b]" />
-                <span className="font-medium text-white">Heavy congestion</span>
-              </div>
-              Strong road pressure requiring operational attention.
-            </div>
-
-            <div className="rounded-[22px] border border-cyan-400/15 bg-cyan-500/8 px-4 py-4 text-sm text-slate-200">
-              🗺️ This map is the foundation for the next phases: district heatmaps,
-              live route overlays, AI recommendations, and predictive congestion.
-            </div>
-          </div>
-        </SectionCard>
-      </section>
-
-      <section className="glass-card soft-glow rounded-[30px] p-6">
-        <div className="mb-5">
-          <p className="text-xs uppercase tracking-[0.2em] text-cyan-300/90">
-            Warehouse analytics
-          </p>
-          <h2 className="heading-font mt-2 text-xl font-semibold text-white">
-            District risk from dbt marts
-          </h2>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {warehouseRisk.map((row) => (
-            <div
-              key={row.district}
-              className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="heading-font text-lg font-semibold text-white">
-                  {row.district}
-                </h3>
-                <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs font-medium text-white">
-                  {row.city_risk_level}
-                </span>
-              </div>
-
-              <div className="mt-4 space-y-2 text-sm text-slate-300">
-                <p>🚗 Avg traffic: {Number(row.avg_traffic_index).toFixed(1)}</p>
-                <p>🌿 Avg AQI: {Number(row.avg_aqi).toFixed(1)}</p>
-                <p>🌡️ Avg temp: {Number(row.avg_temperature_c).toFixed(1)}°C</p>
-                <p>💧 Avg humidity: {Number(row.avg_humidity_pct).toFixed(1)}%</p>
-                <p>🚇 Avg delay: {Number(row.avg_transit_delay_min).toFixed(1)} min</p>
-                <p>🧮 Signals: {row.signal_count}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <AICopilotPanel snapshot={snapshot} />
-
-        <SectionCard title="System status" subtitle="Foundation">
-          <div className="space-y-4">
-            {[
-              {
-                label: "FastAPI live endpoint",
-                value: connected ? "Healthy" : "Check stream",
-              },
-              {
-                label: "Next.js dashboard shell",
-                value: "Ready",
-              },
-              {
-                label: "Real-time Kuala Lumpur map",
-                value: "Ready",
-              },
-              {
-                label: "AI copilot backend",
-                value: "Ready",
-              },
-              {
-                label: "DuckDB warehouse marts",
-                value: warehouseRisk.length > 0 ? "Ready" : "Loading",
-              },
-              {
-                label: "Warehouse refresh",
-                value: warehouseStatus?.status ?? "--",
-              },
-              {
-                label: "Deployment mode",
-                value: health?.deployment_mode ?? "--",
-              },
-            ].map((row) => (
+      <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <SectionCard title={t.districtOverview} subtitle={t.districtOverviewSub}>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {districtCards.map((row) => (
               <div
-                key={row.label}
-                className="flex items-center justify-between rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4"
+                key={row.district}
+                className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5"
               >
-                <span className="text-sm text-slate-300">{row.label}</span>
-                <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs font-medium text-white">
-                  {row.value}
-                </span>
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="heading-font text-lg font-semibold text-white">
+                    {row.district}
+                  </h3>
+                  <span
+                    className={`rounded-full border px-3 py-1 text-xs font-medium ${getRiskTone(
+                      row.risk
+                    )}`}
+                  >
+                    {String(row.risk)}
+                  </span>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-slate-300">
+                  <div>
+                    <p className="text-slate-500">{t.traffic}</p>
+                    <p className={`mt-1 font-medium ${getTrafficTone(row.traffic)}`}>
+                      {formatNumber(row.traffic)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">{t.air}</p>
+                    <p className="mt-1 font-medium text-white">
+                      {formatNumber(row.aqi)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">{t.temperature}</p>
+                    <p className="mt-1 font-medium text-white">
+                      {formatNumber(row.temperature, "°C")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">{t.humidity}</p>
+                    <p className="mt-1 font-medium text-white">
+                      {formatNumber(row.humidity, "%")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">{t.transit}</p>
+                    <p className="mt-1 font-medium text-white">
+                      {formatNumber(row.transit, " min")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">{t.signals}</p>
+                    <p className="mt-1 font-medium text-white">{row.signals}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-sm text-slate-200">
+                  <p className="mb-1 text-xs uppercase tracking-[0.16em] text-slate-500">
+                    {t.recommendation}
+                  </p>
+                  {getDistrictRecommendation(row.risk, t)}
+                </div>
               </div>
             ))}
           </div>
         </SectionCard>
+
+        <SectionCard title={t.currentFocus} subtitle={t.currentFocusSub}>
+          <div className="space-y-4">
+            <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-slate-400">{t.liveSnapshot}</p>
+                <span className="text-xl">📍</span>
+              </div>
+
+              <p className="heading-font mt-3 text-3xl font-bold text-white">
+                {snapshot?.district ?? t.noData}
+              </p>
+
+              <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-slate-300">
+                <div>
+                  <p className="text-slate-500">{t.traffic}</p>
+                  <p className={`mt-1 font-medium ${getTrafficTone(snapshot?.traffic_index)}`}>
+                    {snapshot?.traffic_index ?? "--"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-500">{t.air}</p>
+                  <p className="mt-1 font-medium text-white">
+                    {snapshot?.aqi ?? "--"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-500">{t.temperature}</p>
+                  <p className="mt-1 font-medium text-white">
+                    {snapshot?.temperature_c !== undefined
+                      ? `${snapshot.temperature_c}°C`
+                      : "--"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-500">{t.humidity}</p>
+                  <p className="mt-1 font-medium text-white">
+                    {snapshot?.humidity_pct !== undefined
+                      ? `${snapshot.humidity_pct}%`
+                      : "--"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-500">{t.transit}</p>
+                  <p className="mt-1 font-medium text-white">
+                    {snapshot?.transit_delay_min !== undefined
+                      ? `${snapshot.transit_delay_min} min`
+                      : "--"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-slate-500">{t.riskLevel}</p>
+                  <p className="mt-1 font-medium text-white">
+                    {focusWarehouse?.city_risk_level ?? "low"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[24px] border border-cyan-400/15 bg-cyan-500/8 p-5">
+              <p className="text-sm text-cyan-200">{t.recommendation}</p>
+              <p className="mt-2 text-base leading-7 text-white">
+                {getFocusRecommendation(focusWarehouse?.city_risk_level, t)}
+              </p>
+            </div>
+          </div>
+        </SectionCard>
       </section>
+
+      <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <SectionCard title={t.mapTitle} subtitle={t.mapSub}>
+          <KLLiveMap
+            points={liveDistrictMap.map((item) => ({
+              name: item.name,
+              lat: item.lat,
+              lng: item.lng,
+              trafficIndex: item.trafficIndex,
+              aqi: item.aqi,
+              temperature: item.temperature,
+              humidity: item.humidity,
+            }))}
+          />
+        </SectionCard>
+
+        <SectionCard title={t.warehouseTitle} subtitle={t.warehouseSub}>
+          <div className="space-y-4">
+            {warehouseRisk.length > 0 ? (
+              warehouseRisk.map((row) => (
+                <div
+                  key={row.district}
+                  className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="heading-font text-lg font-semibold text-white">
+                      {row.district}
+                    </h3>
+                    <span
+                      className={`rounded-full border px-3 py-1 text-xs font-medium ${getRiskTone(
+                        row.city_risk_level
+                      )}`}
+                    >
+                      {row.city_risk_level}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm text-slate-300">
+                    <div>
+                      <p className="text-slate-500">{t.traffic}</p>
+                      <p className="mt-1">{formatNumber(Number(row.avg_traffic_index))}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">{t.air}</p>
+                      <p className="mt-1">{formatNumber(Number(row.avg_aqi))}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">{t.temperature}</p>
+                      <p className="mt-1">
+                        {formatNumber(Number(row.avg_temperature_c), "°C")}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">{t.humidity}</p>
+                      <p className="mt-1">
+                        {formatNumber(Number(row.avg_humidity_pct), "%")}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">{t.transit}</p>
+                      <p className="mt-1">
+                        {formatNumber(Number(row.avg_transit_delay_min), " min")}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">{t.signals}</p>
+                      <p className="mt-1">{row.signal_count}</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4 text-sm text-slate-300">
+                {t.loading}
+              </div>
+            )}
+          </div>
+        </SectionCard>
+      </section>
+
+      <AICopilotPanel snapshot={snapshot} language={language} />
     </div>
   );
 }
