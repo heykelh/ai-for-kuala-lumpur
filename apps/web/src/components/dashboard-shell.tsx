@@ -109,17 +109,7 @@ export default function DashboardShell({
               {language === "en" ? "🇫🇷 Passer en français" : "🇬🇧 Switch to English"}
             </button>
 
-            <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
-              <p className="text-xs uppercase tracking-[0.2em] text-cyan-100/50">
-                {t.enterpriseTrack}
-              </p>
-              <h3 className="heading-font mt-2 text-lg font-semibold">
-                {t.upgradeTitle}
-              </h3>
-              <p className="mt-2 text-sm leading-7 text-white/72">
-                {t.upgradeText}
-              </p>
-            </div>
+            
           </div>
         </aside>
 

@@ -2,7 +2,7 @@
 
 import { useLanguage } from "@/components/language-provider";
 
-function SectionCard({
+function GovCard({
   title,
   subtitle,
   children,
@@ -21,233 +21,310 @@ function SectionCard({
           {title}
         </h2>
       </div>
-      {children}
+      <div className="space-y-4 text-sm leading-7 text-slate-300">{children}</div>
     </section>
   );
 }
 
-function InfoCard({ children }: { children: React.ReactNode }) {
+function Bullet({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4 text-sm leading-7 text-slate-300">
+    <div className="rounded-[20px] border border-white/8 bg-white/[0.03] px-4 py-4">
       {children}
     </div>
   );
 }
 
 export default function GovernancePage() {
-  const { language } = useLanguage();
+  const { language, setLanguage } = useLanguage();
 
   const t = {
     en: {
-      eyebrow: "Trust layer",
-      title: "Governance",
+      eyebrow: "Data governance & data quality",
+      title: "AI for Kuala Lumpur — Governance",
       intro:
-        "This page explains how the project handles data quality, lineage, reliability, observability, AI guardrails, and operational trust.",
+        "This page explains how governance is applied to the platform: who is accountable, how data quality is controlled, how live and warehouse layers are separated, how regulatory constraints are addressed, and how the AI copilot stays grounded on governed data.",
+      switchLabel: "FR / EN",
+
       pillarsTitle: "Governance pillars",
-      pillarsSub: "Core concepts",
-      dataQualityTitle: "Data quality",
-      dataQualitySub: "Raw to curated control points",
-      lineageTitle: "Lineage and traceability",
-      lineageSub: "How data moves",
-      aiTitle: "AI governance",
-      aiSub: "Copilot reliability",
-      observabilityTitle: "Observability and reliability",
-      observabilitySub: "Platform health",
-      securityTitle: "Access and environment management",
-      securitySub: "Operational safety",
-      roadmapTitle: "Future governance roadmap",
-      roadmapSub: "Next maturity steps",
+      pillarsSub: "Maturity dimensions",
+
+      operatingTitle: "Operating model",
+      operatingSub: "Roles, responsibilities, accountability",
+
+      qualityTitle: "Data quality framework",
+      qualitySub: "Rules, monitoring, correction",
+
+      securityTitle: "Architecture & security controls",
+      securitySub: "Protection, classification, access",
+
+      rgpdTitle: "RGPD & AI governance",
+      rgpdSub: "Compliance and accountability",
+
+      metadataTitle: "Metadata, glossary & lineage",
+      metadataSub: "Traceability and catalog logic",
+
+      auditTitle: "Audit readiness",
+      auditSub: "What an auditor should find",
+
+      watchTitle: "Culture, training & regulatory watch",
+      watchSub: "Long-term maturity",
+
+      roadmapTitle: "Governance roadmap",
+      roadmapSub: "How this project grows toward maturity",
     },
     fr: {
-      eyebrow: "Couche de confiance",
-      title: "Gouvernance",
+      eyebrow: "Data governance & data quality",
+      title: "AI for Kuala Lumpur — Governance",
       intro:
-        "Cette page explique comment le projet gère la qualité des données, la lineage, la fiabilité, l’observabilité, les garde-fous IA et la confiance opérationnelle.",
+        "Cette page explique comment la gouvernance est appliquée à la plateforme : qui est responsable, comment la qualité des données est contrôlée, comment les couches live et warehouse sont séparées, comment les contraintes réglementaires sont traitées, et comment l’AI copilot reste ancré dans des données gouvernées.",
+      switchLabel: "FR / EN",
+
       pillarsTitle: "Piliers de gouvernance",
-      pillarsSub: "Concepts clés",
-      dataQualityTitle: "Qualité des données",
-      dataQualitySub: "Points de contrôle du raw au préparé",
-      lineageTitle: "Lineage et traçabilité",
-      lineageSub: "Comment les données circulent",
-      aiTitle: "Gouvernance IA",
-      aiSub: "Fiabilité du copilot",
-      observabilityTitle: "Observabilité et fiabilité",
-      observabilitySub: "Santé de la plateforme",
-      securityTitle: "Gestion des accès et des environnements",
-      securitySub: "Sécurité opérationnelle",
-      roadmapTitle: "Feuille de route gouvernance",
-      roadmapSub: "Étapes de maturité suivantes",
+      pillarsSub: "Dimensions de maturité",
+
+      operatingTitle: "Operating model",
+      operatingSub: "Rôles, responsabilités, redevabilité",
+
+      qualityTitle: "Cadre de qualité des données",
+      qualitySub: "Règles, monitoring, correction",
+
+      securityTitle: "Architecture & contrôles de sécurité",
+      securitySub: "Protection, classification, accès",
+
+      rgpdTitle: "RGPD & gouvernance IA",
+      rgpdSub: "Conformité et accountability",
+
+      metadataTitle: "Métadonnées, glossaire & lineage",
+      metadataSub: "Traçabilité et logique de catalog",
+
+      auditTitle: "Audit readiness",
+      auditSub: "Ce qu’un auditeur doit trouver",
+
+      watchTitle: "Culture, formation & veille réglementaire",
+      watchSub: "Maturité dans la durée",
+
+      roadmapTitle: "Roadmap de gouvernance",
+      roadmapSub: "Comment ce projet monte en maturité",
     },
   }[language];
-
-  const pillars =
-    language === "en"
-      ? [
-          "Data quality validation from ingestion to marts",
-          "Lineage and transformation transparency",
-          "Clear separation between live serving and analytics warehouse",
-          "Operational reliability and system status tracking",
-          "AI answer grounding, explainability, and guardrails",
-        ]
-      : [
-          "Validation de la qualité des données de l’ingestion jusqu’aux marts",
-          "Transparence de la lineage et des transformations",
-          "Séparation claire entre serving live et warehouse analytique",
-          "Fiabilité opérationnelle et suivi de l’état du système",
-          "Ancrage, explicabilité et garde-fous des réponses IA",
-        ];
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6">
       <section className="glass-card soft-glow rounded-[34px] p-6 sm:p-8">
-        <p className="text-xs uppercase tracking-[0.26em] text-cyan-300/90">
-          {t.eyebrow}
-        </p>
-        <h1 className="heading-font mt-3 text-3xl font-bold tracking-tight text-white sm:text-5xl">
-          {t.title}
-        </h1>
-        <p className="mt-4 max-w-4xl text-base leading-8 text-slate-300">
-          {t.intro}
-        </p>
-      </section>
+        <div className="flex items-start justify-between gap-4">
+          <div className="max-w-5xl">
+            <p className="text-xs uppercase tracking-[0.26em] text-cyan-300/90">
+              {t.eyebrow}
+            </p>
+            <h1 className="heading-font mt-3 text-3xl font-bold tracking-tight text-white sm:text-5xl">
+              {t.title}
+            </h1>
+            <p className="mt-4 text-base leading-8 text-slate-300">{t.intro}</p>
+          </div>
 
-      <SectionCard title={t.pillarsTitle} subtitle={t.pillarsSub}>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {pillars.map((item) => (
-            <InfoCard key={item}>{item}</InfoCard>
-          ))}
+          <button
+            type="button"
+            onClick={() => setLanguage(language === "en" ? "fr" : "en")}
+            className="rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-2 text-sm font-medium text-white transition hover:bg-white/[0.08]"
+          >
+            {t.switchLabel}
+          </button>
         </div>
-      </SectionCard>
+      </section>
 
-      <section className="grid gap-6 xl:grid-cols-2">
-        <SectionCard title={t.dataQualityTitle} subtitle={t.dataQualitySub}>
-          <div className="space-y-4">
-            <InfoCard>
-              {language === "en"
-                ? "Raw city signals are ingested first, then transformed before being exposed as warehouse marts. This creates a clear distinction between source data and business-facing metrics."
-                : "Les signaux urbains bruts sont ingérés en premier, puis transformés avant d’être exposés sous forme de marts analytiques. Cela crée une distinction claire entre la donnée source et les métriques orientées métier."}
-            </InfoCard>
-            <InfoCard>
-              {language === "en"
-                ? "The project already separates live serving data from warehouse analytics. Redis is used for the latest live state, while DuckDB/dbt are used for curated analytics."
-                : "Le projet sépare déjà les données de serving live des analytics warehouse. Redis est utilisé pour le dernier état live, tandis que DuckDB/dbt servent aux analytics préparées."}
-            </InfoCard>
-            <InfoCard>
-              {language === "en"
-                ? "A mature next step is to add explicit validation rules such as acceptable AQI ranges, non-negative transit delays, district whitelist checks, and duplicate event detection."
-                : "L’étape de maturité suivante consiste à ajouter des règles explicites de validation comme des plages AQI acceptables, des retards non négatifs, une whitelist de districts et la détection des doublons."}
-            </InfoCard>
-          </div>
-        </SectionCard>
+      <section className="grid gap-6 xl:grid-cols-3">
+        <GovCard title={t.pillarsTitle} subtitle={t.pillarsSub}>
+          <Bullet>
+            {language === "en"
+              ? "1. Strategy & governance: policy, committee, roles, roadmap, KPIs."
+              : "1. Stratégie & gouvernance : politique, comité, rôles, feuille de route, KPIs."}
+          </Bullet>
+          <Bullet>
+            {language === "en"
+              ? "2. Data quality: rules, metrics, profiling, anomaly remediation."
+              : "2. Qualité des données : règles, métriques, profiling, remédiation des anomalies."}
+          </Bullet>
+          <Bullet>
+            {language === "en"
+              ? "3. Architecture & security: catalog, classification, RBAC, encryption, MDM logic."
+              : "3. Architecture & sécurité : catalog, classification, RBAC, chiffrement, logique MDM."}
+          </Bullet>
+          <Bullet>
+            {language === "en"
+              ? "4. RGPD & regulatory compliance: register, legal basis, rights, DPA, AIPD, breach response."
+              : "4. RGPD & conformité réglementaire : registre, base légale, droits, DPA, AIPD, réponse aux violations."}
+          </Bullet>
+          <Bullet>
+            {language === "en"
+              ? "5. Metadata & catalog: glossary, technical metadata, lineage."
+              : "5. Métadonnées & catalog : glossaire, métadonnées techniques, lineage."}
+          </Bullet>
+          <Bullet>
+            {language === "en"
+              ? "6. Culture & organization: training, incident review, regulatory watch."
+              : "6. Culture & organisation : formation, revue des incidents, veille réglementaire."}
+          </Bullet>
+        </GovCard>
 
-        <SectionCard title={t.lineageTitle} subtitle={t.lineageSub}>
-          <div className="space-y-4">
-            <InfoCard>
-              {language === "en"
-                ? "Current lineage can be explained as: producer → consumer → Redis → FastAPI → dashboard for live serving, and raw signals → DuckDB → dbt → marts → analytics views for the warehouse path."
-                : "La lineage actuelle peut s’expliquer ainsi : producer → consumer → Redis → FastAPI → dashboard pour le serving live, et raw signals → DuckDB → dbt → marts → vues analytiques pour le chemin warehouse."}
-            </InfoCard>
-            <InfoCard>
-              {language === "en"
-                ? "This distinction is important because live data serves immediate monitoring, while warehouse data supports stable analytics, historical reasoning, and AI enrichment."
-                : "Cette distinction est importante car la donnée live sert au monitoring immédiat, tandis que la donnée warehouse supporte des analytics stables, l’historique et l’enrichissement IA."}
-            </InfoCard>
-            <InfoCard>
-              {language === "en"
-                ? "A future improvement is to expose lineage visually on this page and document each transformation from raw to staging to marts."
-                : "Une amélioration future consiste à exposer visuellement la lineage sur cette page et à documenter chaque transformation du raw au staging puis aux marts."}
-            </InfoCard>
-          </div>
-        </SectionCard>
+        <GovCard title={t.operatingTitle} subtitle={t.operatingSub}>
+          <Bullet>
+            {language === "en"
+              ? "The governance model of this platform is built around clear accountability: Product defines operational objectives, engineering owns pipelines and serving, governance defines policy and controls, and data roles own critical domains."
+              : "Le modèle de gouvernance de cette plateforme repose sur une accountability claire : le produit définit les objectifs opérationnels, l’ingénierie possède les pipelines et le serving, la gouvernance définit la politique et les contrôles, et les rôles data possèdent les domaines critiques."}
+          </Bullet>
+          <Bullet>
+            {language === "en"
+              ? "Core target roles are aligned with mature governance practice: Data Owner for business accountability, Data Steward for quality rules and metadata, Data Custodian for technical custody, DPO for privacy compliance, and RSSI / security function for protection controls."
+              : "Les rôles cibles principaux sont alignés avec une gouvernance mature : Data Owner pour la responsabilité métier, Data Steward pour les règles qualité et les métadonnées, Data Custodian pour la garde technique, DPO pour la conformité privacy et RSSI / sécurité pour les contrôles de protection."}
+          </Bullet>
+          <Bullet>
+            {language === "en"
+              ? "The target decision body is a Data Governance Council / Comité Data with business and IT representation, exactly the kind of structure expected in a DAMA-aligned operating model."
+              : "L’instance cible de décision est un Data Governance Council / Comité Data avec représentation métier et IT, exactement le type de structure attendu dans un operating model aligné DAMA."}
+          </Bullet>
+        </GovCard>
+
+        <GovCard title={t.auditTitle} subtitle={t.auditSub}>
+          <Bullet>
+            {language === "en"
+              ? "An auditor should find a formal policy, named roles, a roadmap, traceable controls, evidence of risk prioritization, and a measurable maturity path."
+              : "Un auditeur doit trouver une politique formalisée, des rôles nommés, une feuille de route, des contrôles traçables, des preuves de priorisation du risque et une trajectoire de maturité mesurable."}
+          </Bullet>
+          <Bullet>
+            {language === "en"
+              ? "For this project, the most visible audit evidence should be: warehouse refresh status, documented lineage, explicit quality rules, governance knowledge base, and explainable AI outputs tied to governed context."
+              : "Pour ce projet, les preuves d’audit les plus visibles doivent être : le statut de refresh du warehouse, une lineage documentée, des règles qualité explicites, une base de connaissance gouvernance, et des sorties IA explicables liées à un contexte gouverné."}
+          </Bullet>
+        </GovCard>
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <GovCard title={t.qualityTitle} subtitle={t.qualitySub}>
+          <Bullet>
+            {language === "en"
+              ? "The quality model should be based on the classic dimensions explicitly highlighted by the audit checklist: completeness, accuracy, consistency, and uniqueness. In this project, freshness must be added as a critical live-data dimension."
+              : "Le modèle qualité doit reposer sur les dimensions classiques explicitement mises en avant par la checklist d’audit : complétude, exactitude, cohérence et unicité. Dans ce projet, la fraîcheur doit être ajoutée comme dimension critique de la live data."}
+          </Bullet>
+          <Bullet>
+            {language === "en"
+              ? "Concrete examples for this platform: district must belong to an allowed list, transit delay cannot be negative, AQI must stay within realistic operational bounds, timestamps must be valid, and duplicate live snapshots should be controlled."
+              : "Exemples concrets pour cette plateforme : le district doit appartenir à une liste autorisée, le retard transport ne peut pas être négatif, l’AQI doit rester dans des bornes opérationnelles réalistes, les timestamps doivent être valides, et les doublons de snapshots live doivent être contrôlés."}
+          </Bullet>
+          <Bullet>
+            {language === "en"
+              ? "The target process is: define quality rules, profile critical datasets, automate metrics, detect anomalies, assign ownership, correct within SLA, and report status to decision makers."
+              : "Le processus cible est : définir les règles de qualité, profiler les jeux de données critiques, automatiser les métriques, détecter les anomalies, assigner un owner, corriger dans un SLA et reporter l’état aux décideurs."}
+          </Bullet>
+          <Bullet>
+            {language === "en"
+              ? "This is fully aligned with the quality stream described in the roadmap: identify critical data, define quality rules, build a quality dashboard, and formalize an anomaly correction process."
+              : "Ceci est pleinement aligné avec le stream qualité décrit dans la roadmap : identifier les données critiques, définir les règles qualité, construire un dashboard qualité et formaliser un processus de correction des anomalies."}
+          </Bullet>
+        </GovCard>
+
+        <GovCard title={t.securityTitle} subtitle={t.securitySub}>
+          <Bullet>
+            {language === "en"
+              ? "The platform should distinguish data by sensitivity and apply appropriate controls. Even in a portfolio project, the governance page should make that model explicit: public demo data, internal technical metadata, confidential operational logic, and regulated personal data if real integrations are introduced later."
+              : "La plateforme doit distinguer les données par niveau de sensibilité et appliquer les contrôles adaptés. Même dans un projet portfolio, la page gouvernance doit rendre ce modèle explicite : données de démo publiques, métadonnées techniques internes, logique opérationnelle confidentielle, et données personnelles réglementées si de vraies intégrations sont introduites plus tard."}
+          </Bullet>
+          <Bullet>
+            {language === "en"
+              ? "Target controls include role-based access control, encryption at rest and in transit, review of critical access rights, documented source inventory, and lineage of critical flows."
+              : "Les contrôles cibles incluent le contrôle d’accès par rôles, le chiffrement au repos et en transit, la revue des habilitations critiques, un inventaire documenté des sources et une lineage des flux critiques."}
+          </Bullet>
+          <Bullet>
+            {language === "en"
+              ? "For AI for Kuala Lumpur, the architectural split between Redis live serving and DuckDB/dbt analytical transformation is itself a governance choice: the live layer optimizes freshness, the warehouse layer optimizes reliability and structure."
+              : "Pour AI for Kuala Lumpur, la séparation architecturale entre le serving live Redis et la transformation analytique DuckDB/dbt est elle-même un choix de gouvernance : la couche live optimise la fraîcheur, la couche warehouse optimise la fiabilité et la structure."}
+          </Bullet>
+        </GovCard>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">
-        <SectionCard title={t.aiTitle} subtitle={t.aiSub}>
-          <div className="space-y-4">
-            <InfoCard>
-              {language === "en"
-                ? "The AI copilot should not answer from vague intuition. It should be grounded in live metrics, warehouse marts, and documented project logic."
-                : "Le copilot IA ne doit pas répondre à partir d’une intuition vague. Il doit être ancré dans les métriques live, les marts warehouse et la logique documentée du projet."}
-            </InfoCard>
-            <InfoCard>
-              {language === "en"
-                ? "The key governance rule for AI is traceability: where did the answer come from, what data was used, and what assumptions were made."
-                : "La règle de gouvernance clé pour l’IA est la traçabilité : d’où vient la réponse, quelles données ont été utilisées et quelles hypothèses ont été faites."}
-            </InfoCard>
-            <InfoCard>
-              {language === "en"
-                ? "The next step is RAG analytics: retrieve relevant warehouse summaries and governance notes before generating the answer."
-                : "L’étape suivante est le RAG analytics : récupérer les résumés warehouse et les notes de gouvernance pertinentes avant de générer la réponse."}
-            </InfoCard>
-          </div>
-        </SectionCard>
+        <GovCard title={t.rgpdTitle} subtitle={t.rgpdSub}>
+          <Bullet>
+            {language === "en"
+              ? "The governance target is to be compatible with a real privacy-by-design posture: maintain an Article 30 processing register, document legal basis, enable data subject rights, manage DPA obligations, and formalize a breach response process."
+              : "La cible de gouvernance est d’être compatible avec une vraie posture privacy-by-design : tenir un registre des traitements Art. 30, documenter la base légale, permettre l’exercice des droits, gérer les obligations DPA et formaliser un processus de réponse aux violations."}
+          </Bullet>
+          <Bullet>
+            {language === "en"
+              ? "The AIPD / DPIA logic is also relevant to this project because the supplied model clearly shows when impact assessment becomes mandatory: profiling, large scale processing, sensitive data, innovative technology, surveillance, or automated decisioning."
+              : "La logique d’AIPD / DPIA est aussi pertinente pour ce projet car le modèle fourni montre clairement quand l’analyse d’impact devient obligatoire : profilage, traitement à grande échelle, données sensibles, technologie innovante, surveillance ou décision automatisée."}
+          </Bullet>
+          <Bullet>
+            {language === "en"
+              ? "For future real-city integrations, any personal data use, geolocation enrichment, or citizen monitoring feature should be screened through this governance lens before rollout."
+              : "Pour de futures intégrations réelles, tout usage de données personnelles, enrichissement de géolocalisation ou fonctionnalité de monitoring citoyen devra être évalué à travers cette grille de gouvernance avant déploiement."}
+          </Bullet>
+          <Bullet>
+            {language === "en"
+              ? "On the AI side, the roadmap explicitly connects governance to IA Act classification, inventory of AI systems, and supervision of higher-risk use cases. This is especially relevant for a copilot that influences operational decisions."
+              : "Côté IA, la roadmap relie explicitement la gouvernance à la classification IA Act, à l’inventaire des systèmes IA et à la supervision des cas d’usage plus risqués. C’est particulièrement pertinent pour un copilot qui influence des décisions opérationnelles."}
+          </Bullet>
+        </GovCard>
 
-        <SectionCard title={t.observabilityTitle} subtitle={t.observabilitySub}>
-          <div className="space-y-4">
-            <InfoCard>
-              {language === "en"
-                ? "The project already exposes operational health through stream connectivity, warehouse refresh status, and system health indicators."
-                : "Le projet expose déjà une partie de la santé opérationnelle via la connectivité du stream, le statut du refresh warehouse et les indicateurs système."}
-            </InfoCard>
-            <InfoCard>
-              {language === "en"
-                ? "A stronger observability layer would include producer activity, consumer lag, Redis freshness, warehouse refresh age, and AI request success rate."
-                : "Une couche d’observabilité plus forte inclurait l’activité du producer, le lag du consumer, la fraîcheur Redis, l’âge du refresh warehouse et le taux de succès des requêtes IA."}
-            </InfoCard>
-            <InfoCard>
-              {language === "en"
-                ? "This is how the platform moves from a visual dashboard to a reliable operational product."
-                : "C’est ainsi que la plateforme passe d’un dashboard visuel à un vrai produit opérationnel fiable."}
-            </InfoCard>
-          </div>
-        </SectionCard>
+        <GovCard title={t.metadataTitle} subtitle={t.metadataSub}>
+          <Bullet>
+            {language === "en"
+              ? "Metadata management is a key maturity signal. The target state includes a business glossary, technical metadata for critical datasets, and documented lineage for critical flows."
+              : "La gestion des métadonnées est un signal clé de maturité. L’état cible inclut un glossaire métier, des métadonnées techniques pour les jeux de données critiques et une lineage documentée pour les flux critiques."}
+          </Bullet>
+          <Bullet>
+            {language === "en"
+              ? "In this project, the most important lineage to document is: producer → consumer → Redis → FastAPI → dashboard for live serving, and raw signals → DuckDB → dbt → marts → analytics pages / copilot for analytical reasoning."
+              : "Dans ce projet, la lineage la plus importante à documenter est : producer → consumer → Redis → FastAPI → dashboard pour le serving live, et raw signals → DuckDB → dbt → marts → pages analytiques / copilot pour le raisonnement analytique."}
+          </Bullet>
+          <Bullet>
+            {language === "en"
+              ? "A future data catalog would document district definitions, metric semantics, thresholds, refresh frequency, ownership, acceptable quality bounds, and downstream consumers."
+              : "Un futur data catalog documenterait les définitions de districts, la sémantique des métriques, les seuils, la fréquence de refresh, l’ownership, les bornes qualité acceptables et les consommateurs aval."}
+          </Bullet>
+        </GovCard>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-2">
-        <SectionCard title={t.securityTitle} subtitle={t.securitySub}>
-          <div className="space-y-4">
-            <InfoCard>
-              {language === "en"
-                ? "Environment variables should isolate API keys, Redis connection strings, and future storage credentials from the codebase."
-                : "Les variables d’environnement doivent isoler les clés API, les chaînes de connexion Redis et les futurs identifiants de stockage hors du code."}
-            </InfoCard>
-            <InfoCard>
-              {language === "en"
-                ? "The project should clearly separate local development, local orchestration, and deployed production settings."
-                : "Le projet doit clairement séparer les réglages de développement local, d’orchestration locale et de production déployée."}
-            </InfoCard>
-            <InfoCard>
-              {language === "en"
-                ? "A future production-grade version should document who can trigger warehouse refreshes, who can access AI endpoints, and which services are allowed to write live data."
-                : "Une future version de niveau production devra documenter qui peut déclencher les refreshes du warehouse, qui peut accéder aux endpoints IA et quels services sont autorisés à écrire les données live."}
-            </InfoCard>
-          </div>
-        </SectionCard>
+      <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <GovCard title={t.watchTitle} subtitle={t.watchSub}>
+          <Bullet>
+            {language === "en"
+              ? "Mature governance is not just controls and documentation. It also requires regular training, recurring awareness, incident analysis, and a structured regulatory watch."
+              : "Une gouvernance mature ne se limite pas aux contrôles et à la documentation. Elle nécessite aussi des formations régulières, de la sensibilisation récurrente, une analyse des incidents et une veille réglementaire structurée."}
+          </Bullet>
+          <Bullet>
+            {language === "en"
+              ? "The supplied guide makes this explicit: CNIL resources, EDPB guidelines, DAMA-DMBOK references, IA Act monitoring, and professional communities all support long-term maturity."
+              : "Le guide fourni le rend explicite : les ressources CNIL, les lignes directrices EDPB, les références DAMA-DMBOK, le suivi de l’IA Act et les communautés professionnelles soutiennent la maturité dans la durée."}
+          </Bullet>
+          <Bullet>
+            {language === "en"
+              ? "For this project, the governance page should therefore signal a culture objective: not only build a platform, but also build the habits required to maintain trusted data and trusted AI over time."
+              : "Pour ce projet, la page gouvernance doit donc signaler un objectif culturel : non seulement construire une plateforme, mais aussi construire les habitudes nécessaires pour maintenir une donnée et une IA de confiance dans la durée."}
+          </Bullet>
+        </GovCard>
 
-        <SectionCard title={t.roadmapTitle} subtitle={t.roadmapSub}>
-          <div className="space-y-4">
-            <InfoCard>
-              {language === "en"
-                ? "Add explicit data quality tests for marts and source freshness."
-                : "Ajouter des tests explicites de qualité de données pour les marts et la fraîcheur des sources."}
-            </InfoCard>
-            <InfoCard>
-              {language === "en"
-                ? "Add lineage documentation from ingestion to analytics pages."
-                : "Ajouter une documentation de lineage depuis l’ingestion jusqu’aux pages analytiques."}
-            </InfoCard>
-            <InfoCard>
-              {language === "en"
-                ? "Add AI response provenance and structured retrieval before generation."
-                : "Ajouter la provenance des réponses IA et une récupération structurée avant génération."}
-            </InfoCard>
-            <InfoCard>
-              {language === "en"
-                ? "Add deployment-mode governance: local real-time mode vs Vercel-compatible public demo mode."
-                : "Ajouter une gouvernance par mode de déploiement : mode local temps réel vs mode démo publique compatible Vercel."}
-            </InfoCard>
-          </div>
-        </SectionCard>
+        <GovCard title={t.roadmapTitle} subtitle={t.roadmapSub}>
+          <Bullet>
+            {language === "en"
+              ? "Phase 1 governance foundation: define policy intent, document roles, make controls visible, and anchor AI responses in governed project context."
+              : "Fondation de gouvernance phase 1 : définir l’intention de politique, documenter les rôles, rendre les contrôles visibles et ancrer les réponses IA dans un contexte projet gouverné."}
+          </Bullet>
+          <Bullet>
+            {language === "en"
+              ? "Phase 2: formalize committee logic, bilingual documentation, clearer ownership, and governance-ready product pages."
+              : "Phase 2 : formaliser la logique de comité, la documentation bilingue, un ownership plus clair et des pages produit prêtes pour la gouvernance."}
+          </Bullet>
+          <Bullet>
+            {language === "en"
+              ? "Phase 3: add stronger quality metrics, automated checks, lineage visibility, warehouse control evidence, and more explicit audit traceability."
+              : "Phase 3 : ajouter des métriques qualité plus fortes, des contrôles automatisés, de la visibilité lineage, des preuves de contrôle warehouse et une traçabilité d’audit plus explicite."}
+          </Bullet>
+          <Bullet>
+            {language === "en"
+              ? "Phase 4: evolve toward a more complete governance operating model with data catalog, richer RACI, regulatory watch workflow, and stronger AI governance documentation."
+              : "Phase 4 : évoluer vers un operating model de gouvernance plus complet avec data catalog, RACI enrichi, workflow de veille réglementaire et documentation de gouvernance IA renforcée."}
+          </Bullet>
+        </GovCard>
       </section>
     </div>
   );
