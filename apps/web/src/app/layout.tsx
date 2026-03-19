@@ -16,6 +16,9 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: "AI for Kuala Lumpur",
   description: "Real-time AI urban intelligence platform",
+  icons: {
+    icon: "/pt96.png",
+  },
 };
 
 export default function RootLayout({
