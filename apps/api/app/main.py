@@ -119,6 +119,12 @@ def get_latest_snapshot() -> dict[str, Any] | None:
         return json.loads(raw)
     except json.JSONDecodeError:
         return None
+    
+def is_redis_available() -> bool:
+    try:
+        return bool(redis_client.ping())
+    except Exception:
+        return False
 
 
 def get_duckdb_path() -> str:
@@ -997,16 +1003,13 @@ def analyze_city_data_with_rag(
 
 @app.get("/health")
 def health() -> dict[str, Any]:
-    redis_connected = False
-    try:
-        redis_connected = bool(redis_client.ping())
-    except Exception:
-        redis_connected = False
+    redis_connected = is_redis_available()
 
     return {
         "status": "ok",
         "service": "ai-for-kuala-lumpur-api",
         "redis_connected": redis_connected,
+        "redis_url_configured": bool(REDIS_URL),
         "deployment_mode": DEPLOYMENT_MODE,
         "live_generation_enabled": LIVE_GENERATION_ENABLED,
         "llm_configured": llm_client is not None,
@@ -1018,20 +1021,11 @@ def health() -> dict[str, Any]:
 @app.get("/api/live")
 def get_live() -> dict[str, Any]:
     snapshot = get_latest_snapshot()
-    redis_available = True
+    redis_available = is_redis_available()
 
     if snapshot is None:
         snapshot = build_random_snapshot()
-        try:
-            save_snapshot(snapshot)
-        except Exception:
-            redis_available = False
-
-    if snapshot is not None:
-        try:
-            redis_client.ping()
-        except Exception:
-            redis_available = False
+        save_snapshot(snapshot)
 
     return {
         "city": "Kuala Lumpur",
@@ -1047,20 +1041,11 @@ def get_live() -> dict[str, Any]:
 @app.get("/api/live/stream")
 def get_live_stream_fallback() -> dict[str, Any]:
     snapshot = get_latest_snapshot()
-    redis_available = True
+    redis_available = is_redis_available()
 
     if snapshot is None:
         snapshot = build_random_snapshot()
-        try:
-            save_snapshot(snapshot)
-        except Exception:
-            redis_available = False
-
-    if snapshot is not None:
-        try:
-            redis_client.ping()
-        except Exception:
-            redis_available = False
+        save_snapshot(snapshot)
 
     return {
         "city": "Kuala Lumpur",
