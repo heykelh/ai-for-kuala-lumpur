@@ -9,5 +9,4 @@ minio==7.2.15
 duckdb==1.2.2
 pandas==2.2.3
 pyarrow==19.0.1
-minio
 openai==1.68.2
