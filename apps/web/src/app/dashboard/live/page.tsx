@@ -3,12 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import AICopilotPanel from "@/components/ai-copilot-panel";
+import { useLanguage } from "@/components/language-provider";
 
 const KLLiveMap = dynamic(() => import("@/components/kl-live-map"), {
   ssr: false,
 });
-
-type Language = "en" | "fr";
 
 type LiveSnapshot = {
   timestamp: string;
@@ -67,14 +66,13 @@ const translations = {
     pageTitle: "Kuala Lumpur Real-Time Overview",
     pageSubtitle:
       "Monitor live city signals, multi-district metrics, warehouse analytics, and interact with the AI copilot in one place.",
-    langButton: "FR / EN",
     currentTime: "Kuala Lumpur time",
     mode: "Mode",
     localRealtime: "Local realtime",
     demoMode: "Demo mode",
     warehouse: "Warehouse",
     warehouseReady: "Ready",
-    warehouseError: "Error",
+    warehouseUnavailable: "Unavailable in cloud demo",
     noWarehouseSuccess: "No successful refresh yet",
     generateSnapshot: "Generate snapshot",
     generateSnapshotHint: "Create a new live district focus",
@@ -86,6 +84,11 @@ const translations = {
     currentFocusSub: "Live district spotlight",
     mapTitle: "Kuala Lumpur live map",
     mapSub: "Geospatial overview",
+    mapLegend: "Map legend",
+    mapLegendSub: "Traffic interpretation",
+    monitoredZone: "Monitored zone",
+    currentDistrictFocus: "Current district focus",
+    trafficInterpretation: "Traffic interpretation",
     warehouseTitle: "Warehouse analytics",
     warehouseSub: "dbt marts and risk signals",
     traffic: "Traffic",
@@ -98,11 +101,21 @@ const translations = {
     riskLevel: "Risk level",
     liveSnapshot: "Live snapshot",
     lastUpdate: "Last update",
-    district: "District",
     noData: "No data",
     loading: "Loading...",
     refreshing: "Refreshing...",
     autoRefreshOn: "Auto refresh every 2s",
+    warehouseDemoText:
+      "The public cloud version prioritizes live demo behavior. Full warehouse refresh and local dbt/DuckDB orchestration remain available in the full-stack local setup.",
+    fluidTraffic: "Fluid traffic",
+    moderateTraffic: "Moderate pressure",
+    heavyTraffic: "Heavy congestion",
+    fluidTrafficText:
+      "Road conditions are smooth and operationally comfortable.",
+    moderateTrafficText:
+      "Traffic density is rising, but delays remain manageable.",
+    heavyTrafficText:
+      "Strong road pressure requiring close operational attention.",
     focusRecommendationHigh:
       "Escalate monitoring and prioritize mobility mitigation in this district.",
     focusRecommendationMedium:
@@ -121,14 +134,13 @@ const translations = {
     pageTitle: "Vue temps réel de Kuala Lumpur",
     pageSubtitle:
       "Surveille les signaux live de la ville, les métriques multi-districts, les analytics warehouse et interagis avec l’AI copilot au même endroit.",
-    langButton: "FR / EN",
     currentTime: "Heure de Kuala Lumpur",
     mode: "Mode",
     localRealtime: "Temps réel local",
     demoMode: "Mode démo",
     warehouse: "Warehouse",
     warehouseReady: "Prêt",
-    warehouseError: "Erreur",
+    warehouseUnavailable: "Indisponible dans la démo cloud",
     noWarehouseSuccess: "Aucun refresh réussi pour le moment",
     generateSnapshot: "Générer un snapshot",
     generateSnapshotHint: "Créer un nouveau focus district live",
@@ -140,6 +152,11 @@ const translations = {
     currentFocusSub: "District live mis en avant",
     mapTitle: "Carte live de Kuala Lumpur",
     mapSub: "Vue géospatiale",
+    mapLegend: "Légende de carte",
+    mapLegendSub: "Interprétation du trafic",
+    monitoredZone: "Zone surveillée",
+    currentDistrictFocus: "Focus district actuel",
+    trafficInterpretation: "Interprétation du trafic",
     warehouseTitle: "Analytics warehouse",
     warehouseSub: "Marts dbt et signaux de risque",
     traffic: "Trafic",
@@ -152,11 +169,21 @@ const translations = {
     riskLevel: "Niveau de risque",
     liveSnapshot: "Snapshot live",
     lastUpdate: "Dernière mise à jour",
-    district: "District",
     noData: "Aucune donnée",
     loading: "Chargement...",
     refreshing: "Rafraîchissement...",
     autoRefreshOn: "Rafraîchissement auto toutes les 2s",
+    warehouseDemoText:
+      "La version cloud publique privilégie le comportement live de démonstration. Le refresh warehouse complet et l’orchestration locale dbt/DuckDB restent disponibles dans la version full-stack locale.",
+    fluidTraffic: "Trafic fluide",
+    moderateTraffic: "Pression modérée",
+    heavyTraffic: "Forte congestion",
+    fluidTrafficText:
+      "Les conditions routières sont fluides et confortables opérationnellement.",
+    moderateTrafficText:
+      "La densité augmente, mais les retards restent encore maîtrisables.",
+    heavyTrafficText:
+      "La pression routière est forte et nécessite une attention opérationnelle rapprochée.",
     focusRecommendationHigh:
       "Escalader la surveillance et prioriser les actions mobilité sur ce district.",
     focusRecommendationMedium:
@@ -207,12 +234,44 @@ function getDistrictRecommendation(
   return t.districtRecommendationLow;
 }
 
+function getTrafficLegend(
+  value: number | undefined,
+  t: (typeof translations)["en"]
+) {
+  if (value === undefined) {
+    return {
+      label: t.moderateTraffic,
+      text: t.moderateTrafficText,
+      tone: "border-amber-400/20 bg-amber-500/10 text-amber-200",
+    };
+  }
+  if (value >= 80) {
+    return {
+      label: t.heavyTraffic,
+      text: t.heavyTrafficText,
+      tone: "border-red-400/20 bg-red-500/10 text-red-200",
+    };
+  }
+  if (value >= 60) {
+    return {
+      label: t.moderateTraffic,
+      text: t.moderateTrafficText,
+      tone: "border-amber-400/20 bg-amber-500/10 text-amber-200",
+    };
+  }
+  return {
+    label: t.fluidTraffic,
+    text: t.fluidTrafficText,
+    tone: "border-emerald-400/20 bg-emerald-500/10 text-emerald-200",
+  };
+}
+
 function formatNumber(value?: number, suffix = "") {
   if (value === undefined || value === null || Number.isNaN(value)) return "--";
   return `${Number(value).toFixed(1)}${suffix}`;
 }
 
-function formatLocalTimeInKL(date: Date, language: Language) {
+function formatLocalTimeInKL(date: Date, language: "en" | "fr") {
   return new Intl.DateTimeFormat(language === "fr" ? "fr-FR" : "en-GB", {
     timeZone: "Asia/Kuala_Lumpur",
     hour: "2-digit",
@@ -234,7 +293,7 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="glass-card soft-glow rounded-[30px] p-6">
+    <section className="glass-card soft-glow rounded-[30px] p-4 sm:p-6">
       <div className="mb-5">
         <p className="text-xs uppercase tracking-[0.2em] text-cyan-300/90">
           {subtitle}
@@ -249,7 +308,9 @@ function SectionCard({
 }
 
 export default function LiveDashboardPage() {
-  const [language, setLanguage] = useState<Language>("en");
+  const { language, setLanguage } = useLanguage();
+  const t = translations[language];
+
   const [data, setData] = useState<LiveApiResponse | null>(null);
   const [warehouseRisk, setWarehouseRisk] = useState<WarehouseRiskRow[]>([]);
   const [warehouseStatus, setWarehouseStatus] =
@@ -258,8 +319,7 @@ export default function LiveDashboardPage() {
   const [currentTime, setCurrentTime] = useState<string>("");
   const [generating, setGenerating] = useState(false);
   const [refreshingWarehouse, setRefreshingWarehouse] = useState(false);
-
-  const t = translations[language];
+  const [warehouseLoaded, setWarehouseLoaded] = useState(false);
 
   useEffect(() => {
     const tick = () => {
@@ -285,19 +345,25 @@ export default function LiveDashboardPage() {
   }
 
   async function loadWarehouse() {
-    const [riskRes, statusRes] = await Promise.all([
-      fetch(`${API_BASE_URL}/api/warehouse/risk`, { cache: "no-store" }),
-      fetch(`${API_BASE_URL}/api/warehouse/status`, { cache: "no-store" }),
-    ]);
+    try {
+      const [riskRes, statusRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/warehouse/risk`, { cache: "no-store" }),
+        fetch(`${API_BASE_URL}/api/warehouse/status`, { cache: "no-store" }),
+      ]);
 
-    if (riskRes.ok) {
-      const riskJson: WarehouseRiskResponse = await riskRes.json();
-      setWarehouseRisk(riskJson.data ?? []);
-    }
+      if (riskRes.ok) {
+        const riskJson: WarehouseRiskResponse = await riskRes.json();
+        setWarehouseRisk(riskJson.data ?? []);
+      }
 
-    if (statusRes.ok) {
-      const statusJson: WarehouseStatusResponse = await statusRes.json();
-      setWarehouseStatus(statusJson.data);
+      if (statusRes.ok) {
+        const statusJson: WarehouseStatusResponse = await statusRes.json();
+        setWarehouseStatus(statusJson.data);
+      }
+
+      setWarehouseLoaded(true);
+    } catch {
+      setWarehouseLoaded(true);
     }
   }
 
@@ -358,7 +424,7 @@ export default function LiveDashboardPage() {
     try {
       await Promise.all([loadLiveOnly(), loadWarehouse()]);
     } catch {
-      // silent refresh
+      // silent
     }
   }
 
@@ -509,12 +575,18 @@ export default function LiveDashboardPage() {
     return warehouseRisk.find((row) => row.district === snapshot.district) ?? null;
   }, [snapshot?.district, warehouseRisk]);
 
+  const trafficLegend = getTrafficLegend(snapshot?.traffic_index, t);
+
   const deploymentModeLabel =
     data?.mode === "streaming-cache" ? t.localRealtime : t.demoMode;
 
+  const warehouseReady = warehouseRisk.length > 0;
+  const warehouseUnavailable =
+    warehouseLoaded && !warehouseReady && warehouseStatus?.status !== "ok";
+
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-6">
-      <section className="glass-card soft-glow rounded-[34px] p-6 sm:p-8">
+    <div className="mx-auto flex max-w-7xl flex-col gap-6 px-3 sm:px-4 lg:px-0">
+      <section className="glass-card soft-glow rounded-[28px] p-4 sm:rounded-[34px] sm:p-6 lg:p-8">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
           <div className="max-w-3xl">
             <p className="text-xs uppercase tracking-[0.26em] text-cyan-300/90">
@@ -523,24 +595,24 @@ export default function LiveDashboardPage() {
             <h1 className="heading-font mt-3 text-3xl font-bold tracking-tight text-white sm:text-5xl">
               {t.pageTitle}
             </h1>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300">
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
               {t.pageSubtitle}
             </p>
             <p className="mt-3 text-sm text-cyan-200">{t.autoRefreshOn}</p>
           </div>
 
-          <div className="flex flex-col gap-3 sm:min-w-[320px]">
+          <div className="flex flex-col gap-3 xl:min-w-[340px]">
             <div className="flex justify-end">
               <button
                 type="button"
-                onClick={() => setLanguage((prev) => (prev === "en" ? "fr" : "en"))}
+                onClick={() => setLanguage(language === "en" ? "fr" : "en")}
                 className="rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-2 text-sm font-medium text-white transition hover:bg-white/[0.08]"
               >
-                {t.langButton}
+                FR / EN
               </button>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="pill rounded-3xl px-5 py-4">
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
                   {t.currentTime}
@@ -562,7 +634,11 @@ export default function LiveDashboardPage() {
                   {t.warehouse}
                 </p>
                 <p className="mt-2 text-sm font-medium text-white">
-                  {warehouseStatus?.status === "ok" ? t.warehouseReady : t.warehouseError}
+                  {warehouseReady
+                    ? t.warehouseReady
+                    : warehouseUnavailable
+                    ? t.warehouseUnavailable
+                    : t.loading}
                 </p>
                 <p className="mt-1 text-xs text-slate-400">
                   {warehouseStatus?.last_success_at
@@ -582,7 +658,7 @@ export default function LiveDashboardPage() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={generateLiveTick}
@@ -758,86 +834,160 @@ export default function LiveDashboardPage() {
         </SectionCard>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+      <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <SectionCard title={t.mapTitle} subtitle={t.mapSub}>
-          <KLLiveMap
-            points={liveDistrictMap.map((item) => ({
-              name: item.name,
-              lat: item.lat,
-              lng: item.lng,
-              trafficIndex: item.trafficIndex,
-              aqi: item.aqi,
-              temperature: item.temperature,
-              humidity: item.humidity,
-            }))}
-          />
+          <div className="space-y-4">
+            <div className="overflow-hidden rounded-[24px] border border-white/8 bg-white/[0.03]">
+              <div className="h-[280px] sm:h-[360px] lg:h-[420px]">
+                <KLLiveMap
+                  points={liveDistrictMap.map((item) => ({
+                    name: item.name,
+                    lat: item.lat,
+                    lng: item.lng,
+                    trafficIndex: item.trafficIndex,
+                    aqi: item.aqi,
+                    temperature: item.temperature,
+                    humidity: item.humidity,
+                  }))}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
+                <p className="text-sm text-slate-400">{t.monitoredZone}</p>
+                <p className="heading-font mt-3 text-2xl font-bold text-white">
+                  Kuala Lumpur
+                </p>
+                <p className="mt-3 text-sm leading-6 text-slate-300">
+                  {liveDistrictMap.length} districts currently visualized on the live map.
+                </p>
+              </div>
+
+              <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
+                <p className="text-sm text-slate-400">{t.currentDistrictFocus}</p>
+                <p className="heading-font mt-3 text-2xl font-bold text-white">
+                  {snapshot?.district ?? t.noData}
+                </p>
+                <p className="mt-3 text-sm leading-6 text-slate-300">
+                  {snapshot?.producer ?? "live-demo-source"}
+                </p>
+              </div>
+
+              <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5">
+                <p className="text-sm text-slate-400">{t.trafficInterpretation}</p>
+                <div
+                  className={`mt-3 inline-flex rounded-full border px-3 py-1 text-xs font-medium ${trafficLegend.tone}`}
+                >
+                  {trafficLegend.label}
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-300">
+                  {trafficLegend.text}
+                </p>
+              </div>
+            </div>
+          </div>
         </SectionCard>
 
-        <SectionCard title={t.warehouseTitle} subtitle={t.warehouseSub}>
+        <SectionCard title={t.mapLegend} subtitle={t.mapLegendSub}>
           <div className="space-y-4">
-            {warehouseRisk.length > 0 ? (
-              warehouseRisk.map((row) => (
-                <div
-                  key={row.district}
-                  className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="heading-font text-lg font-semibold text-white">
-                      {row.district}
-                    </h3>
-                    <span
-                      className={`rounded-full border px-3 py-1 text-xs font-medium ${getRiskTone(
-                        row.city_risk_level
-                      )}`}
-                    >
-                      {row.city_risk_level}
-                    </span>
-                  </div>
-
-                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm text-slate-300">
-                    <div>
-                      <p className="text-slate-500">{t.traffic}</p>
-                      <p className="mt-1">{formatNumber(Number(row.avg_traffic_index))}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-500">{t.air}</p>
-                      <p className="mt-1">{formatNumber(Number(row.avg_aqi))}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-500">{t.temperature}</p>
-                      <p className="mt-1">
-                        {formatNumber(Number(row.avg_temperature_c), "°C")}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-slate-500">{t.humidity}</p>
-                      <p className="mt-1">
-                        {formatNumber(Number(row.avg_humidity_pct), "%")}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-slate-500">{t.transit}</p>
-                      <p className="mt-1">
-                        {formatNumber(Number(row.avg_transit_delay_min), " min")}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-slate-500">{t.signals}</p>
-                      <p className="mt-1">{row.signal_count}</p>
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4 text-sm text-slate-300">
-                {t.loading}
+            <div className="rounded-[22px] border border-emerald-400/20 bg-emerald-500/10 px-4 py-4 text-sm text-slate-200">
+              <div className="mb-2 flex items-center gap-3">
+                <span className="inline-block h-3 w-3 rounded-full bg-[#22c7a9]" />
+                <span className="font-medium text-white">{t.fluidTraffic}</span>
               </div>
-            )}
+              {t.fluidTrafficText}
+            </div>
+
+            <div className="rounded-[22px] border border-amber-400/20 bg-amber-500/10 px-4 py-4 text-sm text-slate-200">
+              <div className="mb-2 flex items-center gap-3">
+                <span className="inline-block h-3 w-3 rounded-full bg-[#f5b942]" />
+                <span className="font-medium text-white">{t.moderateTraffic}</span>
+              </div>
+              {t.moderateTrafficText}
+            </div>
+
+            <div className="rounded-[22px] border border-red-400/20 bg-red-500/10 px-4 py-4 text-sm text-slate-200">
+              <div className="mb-2 flex items-center gap-3">
+                <span className="inline-block h-3 w-3 rounded-full bg-[#ff6b6b]" />
+                <span className="font-medium text-white">{t.heavyTraffic}</span>
+              </div>
+              {t.heavyTrafficText}
+            </div>
+
+            <div className={`rounded-[22px] border px-4 py-4 text-sm ${trafficLegend.tone}`}>
+              <p className="font-medium">{trafficLegend.label}</p>
+              <p className="mt-2">{trafficLegend.text}</p>
+            </div>
           </div>
         </SectionCard>
       </section>
 
-      <AICopilotPanel snapshot={snapshot} language={language} />
+      <SectionCard title={t.warehouseTitle} subtitle={t.warehouseSub}>
+        {warehouseReady ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {warehouseRisk.map((row) => (
+              <div
+                key={row.district}
+                className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="heading-font text-lg font-semibold text-white">
+                    {row.district}
+                  </h3>
+                  <span
+                    className={`rounded-full border px-3 py-1 text-xs font-medium ${getRiskTone(
+                      row.city_risk_level
+                    )}`}
+                  >
+                    {row.city_risk_level}
+                  </span>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-3 text-sm text-slate-300">
+                  <div>
+                    <p className="text-slate-500">{t.traffic}</p>
+                    <p className="mt-1">{formatNumber(Number(row.avg_traffic_index))}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">{t.air}</p>
+                    <p className="mt-1">{formatNumber(Number(row.avg_aqi))}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">{t.temperature}</p>
+                    <p className="mt-1">{formatNumber(Number(row.avg_temperature_c), "°C")}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">{t.humidity}</p>
+                    <p className="mt-1">{formatNumber(Number(row.avg_humidity_pct), "%")}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">{t.transit}</p>
+                    <p className="mt-1">
+                      {formatNumber(Number(row.avg_transit_delay_min), " min")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">{t.signals}</p>
+                    <p className="mt-1">{row.signal_count}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : warehouseUnavailable ? (
+          <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5 text-sm leading-7 text-slate-300">
+            <p className="font-medium text-white">{t.warehouseUnavailable}</p>
+            <p className="mt-3">{t.warehouseDemoText}</p>
+          </div>
+        ) : (
+          <div className="rounded-[24px] border border-white/8 bg-white/[0.03] p-5 text-sm text-slate-300">
+            {t.loading}
+          </div>
+        )}
+      </SectionCard>
+
+      <AICopilotPanel snapshot={snapshot} />
     </div>
   );
 }

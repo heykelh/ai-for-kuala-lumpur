@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-
-type Language = "en" | "fr";
+import { useLanguage } from "@/components/language-provider";
 
 type LiveSnapshot = {
   timestamp?: string;
@@ -68,7 +67,7 @@ type ChatMessage =
       recommendedAction?: string;
     };
 
-const API_BASE_URL = 
+const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 const uiText = {
@@ -151,7 +150,7 @@ function intentBadgeClass(intent?: string) {
   return "border-slate-400/20 bg-slate-500/10 text-slate-200";
 }
 
-function renderIntentLabel(intent: string | undefined, language: Language) {
+function renderIntentLabel(intent: string | undefined, language: "en" | "fr") {
   const t = uiText[language];
   if (intent === "operational") return t.intentOperational;
   if (intent === "analytical") return t.intentAnalytical;
@@ -159,7 +158,10 @@ function renderIntentLabel(intent: string | undefined, language: Language) {
   return t.intentOut;
 }
 
-function renderSeverityLabel(severity: string | undefined, language: Language) {
+function renderSeverityLabel(
+  severity: string | undefined,
+  language: "en" | "fr"
+) {
   const t = uiText[language];
   if (severity === "high") return t.severityHigh;
   if (severity === "medium") return t.severityMedium;
@@ -168,11 +170,10 @@ function renderSeverityLabel(severity: string | undefined, language: Language) {
 
 export default function AICopilotPanel({
   snapshot,
-  language = "en",
 }: {
   snapshot: LiveSnapshot | undefined;
-  language?: Language;
 }) {
+  const { language } = useLanguage();
   const t = uiText[language];
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
@@ -232,7 +233,7 @@ export default function AICopilotPanel({
   }
 
   return (
-    <section className="glass-card soft-glow rounded-[30px] p-6">
+    <section className="glass-card soft-glow rounded-[30px] p-4 sm:p-6">
       <div className="mb-5">
         <p className="text-xs uppercase tracking-[0.2em] text-cyan-300/90">
           {t.sectionTag}
@@ -249,7 +250,7 @@ export default function AICopilotPanel({
             key={item}
             type="button"
             onClick={() => runAnalysis(item)}
-            className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-2 text-sm text-slate-200 transition hover:bg-white/[0.08]"
+            className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-2 text-xs sm:text-sm text-slate-200 transition hover:bg-white/[0.08]"
           >
             {item}
           </button>
@@ -257,7 +258,7 @@ export default function AICopilotPanel({
       </div>
 
       <div className="rounded-[28px] border border-white/8 bg-[#08111b]/90">
-        <div className="max-h-[560px] min-h-[320px] space-y-4 overflow-y-auto p-4">
+        <div className="max-h-[420px] min-h-[260px] space-y-4 overflow-y-auto p-3 sm:max-h-[560px] sm:min-h-[320px] sm:p-4">
           {messages.length === 0 && (
             <div className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4 text-sm leading-6 text-slate-300">
               {t.emptyState}
@@ -268,7 +269,7 @@ export default function AICopilotPanel({
             if (message.role === "user") {
               return (
                 <div key={message.id} className="flex justify-end">
-                  <div className="max-w-[85%] rounded-[24px] bg-cyan-400 px-4 py-3 text-sm leading-6 text-slate-950">
+                  <div className="max-w-[92%] rounded-[24px] bg-cyan-400 px-4 py-3 text-sm leading-6 text-slate-950 sm:max-w-[85%]">
                     {message.content}
                   </div>
                 </div>
@@ -277,7 +278,7 @@ export default function AICopilotPanel({
 
             return (
               <div key={message.id} className="flex justify-start">
-                <div className="max-w-[90%] rounded-[24px] border border-white/8 bg-white/[0.04] px-4 py-4 text-white">
+                <div className="max-w-[95%] rounded-[24px] border border-white/8 bg-white/[0.04] px-4 py-4 text-white sm:max-w-[90%]">
                   <div className="mb-3 flex flex-wrap items-center gap-2">
                     <span
                       className={`rounded-full border px-3 py-1 text-xs font-medium ${severityBadgeClass(
@@ -295,7 +296,7 @@ export default function AICopilotPanel({
                     </span>
                   </div>
 
-                  <div className="whitespace-pre-wrap text-sm leading-7 text-white">
+                  <div className="whitespace-pre-wrap break-words text-sm leading-7 text-white">
                     {message.content}
                   </div>
 
@@ -334,14 +335,14 @@ export default function AICopilotPanel({
 
           {loading && (
             <div className="flex justify-start">
-              <div className="max-w-[90%] rounded-[24px] border border-white/8 bg-white/[0.04] px-4 py-4 text-sm text-slate-300">
+              <div className="max-w-[95%] rounded-[24px] border border-white/8 bg-white/[0.04] px-4 py-4 text-sm text-slate-300 sm:max-w-[90%]">
                 {t.sending}
               </div>
             </div>
           )}
         </div>
 
-        <div className="border-t border-white/8 p-4">
+        <div className="border-t border-white/8 p-3 sm:p-4">
           <div className="flex flex-col gap-3 sm:flex-row">
             <input
               value={question}

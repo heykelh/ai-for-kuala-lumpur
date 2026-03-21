@@ -17,7 +17,12 @@ export const metadata: Metadata = {
   title: "AI for Kuala Lumpur",
   description: "Real-time AI urban intelligence platform",
   icons: {
-    icon: "/pt96.png",
+    icon: [
+      { url: "/pt96.png", type: "image/png" },
+      { url: "/icon.png", type: "image/png" },
+    ],
+    shortcut: ["/pt96.png"],
+    apple: ["/pt96.png"],
   },
 };
 
