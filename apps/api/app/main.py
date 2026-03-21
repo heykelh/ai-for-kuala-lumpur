@@ -100,13 +100,21 @@ def build_random_snapshot() -> dict[str, Any]:
 
 
 def save_snapshot(snapshot: dict[str, Any]) -> None:
-    redis_client.set(LIVE_SNAPSHOT_KEY, json.dumps(snapshot, ensure_ascii=False))
+    try:
+        redis_client.set(LIVE_SNAPSHOT_KEY, json.dumps(snapshot, ensure_ascii=False))
+    except Exception:
+        pass
 
 
 def get_latest_snapshot() -> dict[str, Any] | None:
-    raw = redis_client.get(LIVE_SNAPSHOT_KEY)
+    try:
+        raw = redis_client.get(LIVE_SNAPSHOT_KEY)
+    except Exception:
+        return None
+
     if not raw:
         return None
+
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
@@ -1010,15 +1018,26 @@ def health() -> dict[str, Any]:
 @app.get("/api/live")
 def get_live() -> dict[str, Any]:
     snapshot = get_latest_snapshot()
+    redis_available = True
+
     if snapshot is None:
         snapshot = build_random_snapshot()
-        save_snapshot(snapshot)
+        try:
+            save_snapshot(snapshot)
+        except Exception:
+            redis_available = False
+
+    if snapshot is not None:
+        try:
+            redis_client.ping()
+        except Exception:
+            redis_available = False
 
     return {
         "city": "Kuala Lumpur",
         "mode": (
             "streaming-cache"
-            if DEPLOYMENT_MODE == "local_realtime"
+            if DEPLOYMENT_MODE == "local_realtime" and redis_available
             else "demo-generated"
         ),
         "snapshot": snapshot,
@@ -1028,15 +1047,26 @@ def get_live() -> dict[str, Any]:
 @app.get("/api/live/stream")
 def get_live_stream_fallback() -> dict[str, Any]:
     snapshot = get_latest_snapshot()
+    redis_available = True
+
     if snapshot is None:
         snapshot = build_random_snapshot()
-        save_snapshot(snapshot)
+        try:
+            save_snapshot(snapshot)
+        except Exception:
+            redis_available = False
+
+    if snapshot is not None:
+        try:
+            redis_client.ping()
+        except Exception:
+            redis_available = False
 
     return {
         "city": "Kuala Lumpur",
         "mode": (
             "streaming-cache"
-            if DEPLOYMENT_MODE == "local_realtime"
+            if DEPLOYMENT_MODE == "local_realtime" and redis_available
             else "demo-generated"
         ),
         "snapshot": snapshot,
