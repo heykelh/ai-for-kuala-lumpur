@@ -58,7 +58,7 @@ type WarehouseStatusResponse = {
   };
 };
 
-const API_BASE_URL = 
+const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 const translations = {
@@ -102,6 +102,7 @@ const translations = {
     noData: "No data",
     loading: "Loading...",
     refreshing: "Refreshing...",
+    autoRefreshOn: "Auto refresh every 2s",
     focusRecommendationHigh:
       "Escalate monitoring and prioritize mobility mitigation in this district.",
     focusRecommendationMedium:
@@ -155,6 +156,7 @@ const translations = {
     noData: "Aucune donnée",
     loading: "Chargement...",
     refreshing: "Rafraîchissement...",
+    autoRefreshOn: "Rafraîchissement auto toutes les 2s",
     focusRecommendationHigh:
       "Escalader la surveillance et prioriser les actions mobilité sur ce district.",
     focusRecommendationMedium:
@@ -269,61 +271,92 @@ export default function LiveDashboardPage() {
     return () => clearInterval(timer);
   }, [language]);
 
+  async function loadLiveOnly() {
+    const liveRes = await fetch(`${API_BASE_URL}/api/live`, {
+      cache: "no-store",
+    });
+
+    if (!liveRes.ok) {
+      throw new Error("Failed to fetch live data.");
+    }
+
+    const liveJson: LiveApiResponse = await liveRes.json();
+    setData(liveJson);
+  }
+
+  async function loadWarehouse() {
+    const [riskRes, statusRes] = await Promise.all([
+      fetch(`${API_BASE_URL}/api/warehouse/risk`, { cache: "no-store" }),
+      fetch(`${API_BASE_URL}/api/warehouse/status`, { cache: "no-store" }),
+    ]);
+
+    if (riskRes.ok) {
+      const riskJson: WarehouseRiskResponse = await riskRes.json();
+      setWarehouseRisk(riskJson.data ?? []);
+    }
+
+    if (statusRes.ok) {
+      const statusJson: WarehouseStatusResponse = await statusRes.json();
+      setWarehouseStatus(statusJson.data);
+    }
+  }
+
+  async function generateLiveTickSilently() {
+    try {
+      await fetch(`${API_BASE_URL}/api/live/generate`, {
+        method: "POST",
+      });
+    } catch {
+      // silent on auto refresh
+    }
+  }
+
   useEffect(() => {
-    async function loadInitialData() {
+    let isMounted = true;
+
+    async function bootstrap() {
       try {
-        const [liveRes, riskRes, statusRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/live`, { cache: "no-store" }),
-          fetch(`${API_BASE_URL}/api/warehouse/risk`, { cache: "no-store" }),
-          fetch(`${API_BASE_URL}/api/warehouse/status`, { cache: "no-store" }),
-        ]);
-
-        if (!liveRes.ok) {
-          throw new Error("Failed to fetch live data.");
-        }
-
-        const liveJson: LiveApiResponse = await liveRes.json();
-        setData(liveJson);
-
-        if (riskRes.ok) {
-          const riskJson: WarehouseRiskResponse = await riskRes.json();
-          setWarehouseRisk(riskJson.data ?? []);
-        }
-
-        if (statusRes.ok) {
-          const statusJson: WarehouseStatusResponse = await statusRes.json();
-          setWarehouseStatus(statusJson.data);
-        }
+        await generateLiveTickSilently();
+        if (!isMounted) return;
+        await Promise.all([loadLiveOnly(), loadWarehouse()]);
       } catch (err) {
+        if (!isMounted) return;
         setError(err instanceof Error ? err.message : "Unknown error");
       }
     }
 
-    loadInitialData();
+    bootstrap();
+
+    const liveTimer = setInterval(async () => {
+      try {
+        await generateLiveTickSilently();
+        if (!isMounted) return;
+        await loadLiveOnly();
+      } catch {
+        if (!isMounted) return;
+        setError("Auto refresh failed.");
+      }
+    }, 2000);
+
+    const warehouseTimer = setInterval(async () => {
+      try {
+        if (!isMounted) return;
+        await loadWarehouse();
+      } catch {
+        // silent
+      }
+    }, 15000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(liveTimer);
+      clearInterval(warehouseTimer);
+    };
   }, []);
 
   async function reloadLiveAndWarehouseStatus() {
     try {
-      const [liveRes, riskRes, statusRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/live`, { cache: "no-store" }),
-        fetch(`${API_BASE_URL}/api/warehouse/risk`, { cache: "no-store" }),
-        fetch(`${API_BASE_URL}/api/warehouse/status`, { cache: "no-store" }),
-      ]);
-
-      if (liveRes.ok) {
-        const liveJson: LiveApiResponse = await liveRes.json();
-        setData(liveJson);
-      }
-
-      if (riskRes.ok) {
-        const riskJson: WarehouseRiskResponse = await riskRes.json();
-        setWarehouseRisk(riskJson.data ?? []);
-      }
-
-      if (statusRes.ok) {
-        const statusJson: WarehouseStatusResponse = await statusRes.json();
-        setWarehouseStatus(statusJson.data);
-      }
+      await Promise.all([loadLiveOnly(), loadWarehouse()]);
     } catch {
       // silent refresh
     }
@@ -493,6 +526,7 @@ export default function LiveDashboardPage() {
             <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300">
               {t.pageSubtitle}
             </p>
+            <p className="mt-3 text-sm text-cyan-200">{t.autoRefreshOn}</p>
           </div>
 
           <div className="flex flex-col gap-3 sm:min-w-[320px]">

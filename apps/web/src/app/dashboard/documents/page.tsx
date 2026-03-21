@@ -654,6 +654,113 @@ export default function DocumentsPage() {
         </DocCard>
       </section>
 
+      <DocCard
+        title={language === "en" ? "Deployment challenges & technical decisions" : "Difficultés de déploiement & choix techniques"}
+        subtitle={language === "en" ? "Real-world constraints" : "Contraintes réelles"}
+      >
+        <Bullet>
+          {language === "en" ? (
+            <>
+              This project was not only about building features, but also about facing real-world deployment constraints.
+              The initial objective was to deploy a fully real-time architecture with a streaming pipeline, background worker,
+              Redis cache, and a live dashboard behaving exactly like in local development.
+            </>
+          ) : (
+            <>
+              Ce projet ne consistait pas uniquement à développer des fonctionnalités, mais aussi à affronter des contraintes
+              réelles de déploiement. L’objectif initial était de déployer une architecture temps réel complète avec streaming,
+              worker, cache Redis et dashboard dynamique comme en local.
+            </>
+          )}
+        </Bullet>
+
+        <Bullet>
+          {language === "en" ? (
+            <>
+              The first attempt was done with Vercel. However, Vercel is optimized for frontend and serverless functions,
+              not for long-running backend processes or real-time pipelines. This led to build errors, configuration issues,
+              and limitations around persistent services.
+            </>
+          ) : (
+            <>
+              Une première tentative a été faite avec Vercel. Cependant, Vercel est optimisé pour le frontend et le serverless,
+              mais pas pour les processus backend persistants ou les pipelines temps réel. Cela a entraîné des erreurs de build,
+              des problèmes de configuration et des limitations sur les services longue durée.
+            </>
+          )}
+        </Bullet>
+
+        <Bullet>
+          {language === "en" ? (
+            <>
+              The architecture was then migrated to a combination of Netlify (frontend) and Render (backend API).
+              This solved deployment stability, but introduced another constraint: background workers required to simulate
+              real-time streaming are not available for free in most platforms.
+            </>
+          ) : (
+            <>
+              L’architecture a ensuite été migrée vers une combinaison Netlify (frontend) et Render (backend API).
+              Cela a permis de stabiliser le déploiement, mais a introduit une autre contrainte : les background workers
+              nécessaires au streaming temps réel ne sont généralement pas gratuits.
+            </>
+          )}
+        </Bullet>
+
+        <Bullet>
+          {language === "en" ? (
+            <>
+              Instead of forcing a paid infrastructure, a pragmatic solution was designed:
+              the frontend itself triggers live data generation every few seconds through the API.
+              This preserves the real-time visual experience while remaining fully free and deployable.
+            </>
+          ) : (
+            <>
+              Plutôt que d’imposer une infrastructure payante, une solution pragmatique a été mise en place :
+              le frontend déclenche lui-même la génération des données toutes les quelques secondes via l’API.
+              Cela permet de conserver l’effet temps réel tout en restant 100% gratuit et déployable.
+            </>
+          )}
+        </Bullet>
+
+        <Bullet>
+          {language === "en" ? (
+            <>
+              This dual-mode architecture is intentional:
+              <br />- Local mode: full producer/consumer streaming with Redis
+              <br />- Public demo mode: frontend-driven live simulation
+              <br />
+              <br />
+              This demonstrates the ability to adapt architecture to real constraints while preserving product experience.
+            </>
+          ) : (
+            <>
+              Cette architecture en double mode est volontaire :
+              <br />- Mode local : streaming complet avec producer/consumer et Redis
+              <br />- Mode démo public : simulation temps réel pilotée par le frontend
+              <br />
+              <br />
+              Cela démontre la capacité à adapter une architecture aux contraintes réelles tout en préservant l’expérience produit.
+            </>
+           )}
+        </Bullet>
+
+        <Bullet>
+          {language === "en" ? (
+            <>
+              This phase of the project highlights an important engineering mindset:
+              building a system is not only about technology, but also about trade-offs, cost constraints,
+              and delivering a convincing experience under real-world limitations.
+            </>
+          ) : (
+            <>
+              Cette phase du projet met en avant un point clé de l’ingénierie :
+              construire un système ne consiste pas uniquement à utiliser des technologies,
+              mais aussi à faire des arbitrages, gérer les coûts et livrer une expérience convaincante malgré les contraintes.
+            </>
+          )}
+        </Bullet>
+      </DocCard>
+
       <DocCard title={t.finalTitle} subtitle={t.finalSub}>
         <Bullet>
           {language === "en" ? (
