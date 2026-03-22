@@ -14,44 +14,41 @@ export default function DashboardShell({
   const { language, toggleLanguage } = useLanguage();
 
   const t = {
-    en: {
-      live: "🏙️ Live Overview",
-      docs: "📚 Documents",
-      ai: "🤖 AI Assistant",
-      predictions: "📈 Predictions",
-      streaming: "📡 Streaming",
-      governance: "🧭 Governance",
-      headerEyebrow: "Real-time city intelligence",
-      headerTitle: "AI for Kuala Lumpur",
-      liveSystem: "Live system",
-      urbanAnalytics: "Urban analytics",
-      switchLanguage: "FR / EN",
-      mobileNav: "Navigation",
-    },
-    fr: {
-      live: "🏙️ Vue temps réel",
-      docs: "📚 Documents",
-      ai: "🤖 Assistant IA",
-      predictions: "📈 Prédictions",
-      streaming: "📡 Streaming",
-      governance: "🧭 Gouvernance",
-      headerEyebrow: "Intelligence urbaine temps réel",
-      headerTitle: "AI for Kuala Lumpur",
-      liveSystem: "Système live",
-      urbanAnalytics: "Analytics urbaines",
-      switchLanguage: "FR / EN",
-      mobileNav: "Navigation",
-    },
-  }[language];
+  en: {
+    live: "🏙️ Live Overview",
+    docs: "📚 Documents",
+    story: "📖 Project Story",
+    ai: "🤖 AI Assistant",
+    governance: "🧭 Governance",
+    headerEyebrow: "Real-time city intelligence",
+    headerTitle: "AI for Kuala Lumpur",
+    liveSystem: "Live system",
+    urbanAnalytics: "Urban analytics",
+    switchLanguage: "FR / EN",
+    mobileNav: "Navigation",
+  },
+  fr: {
+    live: "🏙️ Vue temps réel",
+    docs: "📚 Documents",
+    story: "📖 Histoire du projet",
+    ai: "🤖 Assistant IA",
+    governance: "🧭 Gouvernance",
+    headerEyebrow: "Intelligence urbaine temps réel",
+    headerTitle: "AI for Kuala Lumpur",
+    liveSystem: "Système live",
+    urbanAnalytics: "Analytics urbaines",
+    switchLanguage: "FR / EN",
+    mobileNav: "Navigation",
+  },
+}[language];
 
   const navItems = [
-    { href: "/dashboard/live", label: t.live },
-    { href: "/dashboard/documents", label: t.docs },
-    { href: "/dashboard/ai", label: t.ai },
-    { href: "/dashboard/predictions", label: t.predictions },
-    { href: "/dashboard/streaming", label: t.streaming },
-    { href: "/dashboard/governance", label: t.governance },
-  ];
+  { href: "/dashboard/live", label: t.live },
+  { href: "/dashboard/story", label: t.story },
+  { href: "/dashboard/documents", label: t.docs },
+  { href: "/dashboard/ai", label: t.ai },
+  { href: "/dashboard/governance", label: t.governance },
+];
 
   return (
     <div className="dashboard-bg">
